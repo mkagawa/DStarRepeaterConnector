@@ -6,7 +6,7 @@
 // the program provides two virtual serial ports, which is
 // acting as DVMega board serial port
 
-#include "dvmega_sim.h"
+#include "DVMegaSimApp.h"
 #include "WorkerThread.h"
 #include "Const.h"
 
@@ -15,43 +15,53 @@ CWorkerThread::~CWorkerThread() {
   wxLogMessage(wxT("%d Destructor for myThread"), m_fd);
 }
 
-CWorkerThread::CWorkerThread(int fd,char* devName) 
-  : wxThread(wxTHREAD_JOINABLE),m_fd(fd), m_devName(devName)
+CWorkerThread::CWorkerThread()
+  : wxThread(wxTHREAD_JOINABLE)
 {
-  wxLogMessage(wxT("%d CWorkerThread contructor"), m_fd);
-  wxLogMessage(wxT("%d Device: %s"), m_fd, m_devName);
 }
 void CWorkerThread::OnExit() {
-  if(m_fd) {
-    close(m_fd);
-  }
   wxLogMessage(wxT("%d CWorkerThread OnExit"), m_fd);
 }
 
 CWorkerThread::ExitCode CWorkerThread::Entry() {
 
+  char devname[50];
+  ::openpty(&m_fd, &m_slavefd, devname, NULL, NULL);
+  m_devName = devname;
+  wxLogMessage(wxT("%d CWorkerThread started"), m_fd);
+  wxLogMessage(wxT("%d Device: %s"), m_fd, m_devName);
+
   int flags = ::fcntl(m_fd, F_GETFL, 0);
   ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   while(!TestDestroy()){
-    ProcessData();
-    Sleep(1000*1);
+    if(ProcessData()==0) {
+      Sleep(50);
+    }
   }
+
+  ::close(m_fd);
+  ::close(m_slavefd);
   wxLogMessage(wxT("%d Exit from entry"), m_fd);
   return static_cast<ExitCode>(0);
 }
 
-void CWorkerThread::ProcessData() {
-  wxLogMessage(wxT("%d ProcessData"), m_fd);
+int CWorkerThread::ProcessData() {
+  //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
   size_t len = 0; 
   while(m_buffer[0]!=DVRPTR_FRAME_START) {
     len = ::read(m_fd, m_buffer, 1);
     if(len != 1) {
-      wxLogMessage(wxT("result empty"));
-      return;
+      return 0;
     }
+
+#ifdef DEBUG
+    //write back to client
+    ::write(m_fd, m_buffer, 1);
     wxLogMessage(wxT("buff = %X"), m_buffer[0]);
+#endif
   }
+
   len = ::read(m_fd, m_buffer, 3);
   size_t size = m_buffer[0] + m_buffer[1] * 256;
   int cmd = m_buffer[2];
@@ -134,5 +144,6 @@ void CWorkerThread::ProcessData() {
       wxLogMessage(wxT("Unknown cmd %X"), cmd);
       break;
   }
+  return 1;
 }
 

@@ -14,7 +14,7 @@ void MyApp::OnSignal(int num) {
 wxIMPLEMENT_APP(MyApp);
 
 int MyApp::OnExit() {
-  wxLogMessage(wxT("Request for End"));
+  wxLogMessage(wxT("Request for Exit"));
 
   wxArrayThread arr = wxGetApp().m_threads;
   size_t len = arr.GetCount();
@@ -50,13 +50,7 @@ bool MyApp::OnInit() {
   wxLogMessage(wxT("M OnInit"));
 
   for(int i = 0; i < 2; i++ ) {
-    int master1;
-    int slave1;
-    char devname[50];
-    ::openpty(&master1, &slave1, devname, NULL, NULL);
-    m_masterFd.Add(master1);
-    m_slaveFd.Add(slave1);
-    CWorkerThread *pThread = new CWorkerThread(master1, devname);
+    CWorkerThread *pThread = new CWorkerThread();
     wxThreadError e = pThread->Create();
     if(e != wxThreadError::wxTHREAD_NO_ERROR) {
       delete pThread;

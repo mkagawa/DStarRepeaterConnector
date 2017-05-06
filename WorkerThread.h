@@ -15,7 +15,7 @@
 const unsigned char DVRPTR_HEADER_LENGTH = 5U;
 class CWorkerThread : public wxThread {
   public:
-    CWorkerThread(int fd, char* devName);
+    CWorkerThread();
     virtual ~CWorkerThread();
 
   protected: 
@@ -26,7 +26,8 @@ class CWorkerThread : public wxThread {
   private:
     wxString m_devName;
     int m_fd;
-    void ProcessData();
+    int m_slavefd;
+    int ProcessData();
 
     char m_buffer[1000];
     char m_wbuffer[1000];
