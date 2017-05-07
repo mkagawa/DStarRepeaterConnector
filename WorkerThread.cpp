@@ -41,7 +41,6 @@ CWorkerThread::ExitCode CWorkerThread::Entry() {
 
   ::close(m_fd);
   ::close(m_slavefd);
-  wxLogMessage(wxT("%d Exit from entry"), m_fd);
   return static_cast<ExitCode>(0);
 }
 
