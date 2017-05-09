@@ -6,12 +6,13 @@ LDLIBS = -g -lutil -pthread   -lwx_gtk3u_xrc-3.1 -lwx_gtk3u_html-3.1 -lwx_gtk3u_
 
 .PHONY: all clean distclean
 
-all: dvmega_sim
+all: repeaterconnector
 
-dvmega_sim: WorkerThread.o DVMegaSimApp.o
+repeaterconnector: DVMegaWorkerThread.o DVAPWorkerThread.o BaseWorkerThread.o RepeaterConnector.o DVAPWorkerThread.h BaseWorkerThread.h
 	$(LINK.cpp) $^ $(LDLIBS) -o $@
 
+
 clean:
-	@- $(RM) dvmega_sim.o dvmega_sim
+	@- $(RM) *.o repeaterconnector
 
 distclean: clean

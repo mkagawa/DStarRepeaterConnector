@@ -19,23 +19,24 @@
 #include <wx/frame.h>
 #endif
 
-WX_DEFINE_ARRAY_PTR(wxThread *, wxArrayThread);
+#include "BaseWorkerThread.h"
+
+WX_DEFINE_ARRAY_PTR(CBaseWorkerThread*, wxArrayBaseWorkerThread);
 WX_DEFINE_ARRAY_INT(int, wxFdArray);
 
-class MyApp : public wxApp {
+
+class CRepeaterConnectorApp : public wxApp {
 public:
    virtual bool OnInit();
    virtual void OnInitCmdLine(wxCmdLineParser &);
-
-
    virtual int OnExit();
-
-   wxArrayThread m_threads;
+   wxArrayBaseWorkerThread m_threads;
    wxArrayInt m_masterFd;
    wxArrayInt m_slaveFd;
    wxCriticalSection m_pThreadCS;    // protects the m_pThread pointer
+
 private:
    static void OnSignal(int sig);
 };
 
-wxDECLARE_APP(MyApp);
+wxDECLARE_APP(CRepeaterConnectorApp);
