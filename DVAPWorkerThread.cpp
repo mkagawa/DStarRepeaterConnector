@@ -41,7 +41,7 @@ int CDVAPWorkerThread::ProcessData() {
 
   wxMemoryBuffer* pBuf;
   if(m_SendingQueue.ReceiveTimeout(0, pBuf)!=wxMSGQUEUE_TIMEOUT) {
-    dumper("GMSKR", (unsigned char*)pBuf->GetData(), pBuf->GetDataLen());
+    dumper("REMOT", (unsigned char*)pBuf->GetData(), pBuf->GetDataLen());
     delete pBuf;
   }
   
@@ -98,81 +98,86 @@ int CDVAPWorkerThread::ProcessData() {
   if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
     wxLogMessage(wxT("DVAP_ACK"));
     return 1; 
-  } else if(::memcmp(m_buffer,DVAP_HEADER,DVAP_HEADER_LEN)==0) {
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_NAME"));
-      ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_NAME"));
+    ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
+    return 1;
  
   } else if(::memcmp(m_buffer,DVAP_REQ_SERIAL,DVAP_REQ_SERIAL_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_SERIAL"));
-      ::memcpy(m_wbuffer,DVAP_RESP_SERIAL,DVAP_RESP_SERIAL_LEN);
-      ::memcpy(&m_wbuffer[4], "12345678", 8);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_SERIAL_LEN+8);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_SERIAL"));
+    ::memcpy(m_wbuffer,DVAP_RESP_SERIAL,DVAP_RESP_SERIAL_LEN);
+    ::memcpy(&m_wbuffer[4], "12345678", 8);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_SERIAL_LEN+8);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FIRMWARE,DVAP_REQ_FIRMWARE_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_FIRMWARE"));
-      ::memcpy(m_wbuffer,DVAP_RESP_FIRMWARE,DVAP_RESP_FIRMWARE_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_FIRMWARE_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_FIRMWARE"));
+    ::memcpy(m_wbuffer,DVAP_RESP_FIRMWARE,DVAP_RESP_FIRMWARE_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_FIRMWARE_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_MODULATION,DVAP_REQ_MODULATION_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_MODULATION"));
-      ::memcpy(m_wbuffer,DVAP_RESP_MODULATION,DVAP_RESP_MODULATION_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_MODULATION_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_MODULATION"));
+    ::memcpy(m_wbuffer,DVAP_RESP_MODULATION,DVAP_RESP_MODULATION_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_MODULATION_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_MODE,DVAP_REQ_MODE_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_MODE"));
-      ::memcpy(m_wbuffer,DVAP_RESP_MODE,DVAP_RESP_MODE_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_MODE_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_MODE"));
+    ::memcpy(m_wbuffer,DVAP_RESP_MODE,DVAP_RESP_MODE_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_MODE_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_POWER,DVAP_REQ_POWER_LEN-2)==0) {
-      wxLogMessage(wxT("DVAP_REQ_POWER"));
-      ::memcpy(m_wbuffer,DVAP_RESP_POWER,DVAP_RESP_POWER_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_POWER_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_POWER"));
+    ::memcpy(m_wbuffer,DVAP_RESP_POWER,DVAP_RESP_POWER_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_POWER_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_SQUELCH,DVAP_REQ_SQUELCH_LEN-2)==0) {
-      wxLogMessage(wxT("DVAP_REQ_SQUELCH"));
-      ::memcpy(m_wbuffer,DVAP_RESP_SQUELCH,DVAP_RESP_SQUELCH_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_SQUELCH_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_SQUELCH"));
+    ::memcpy(m_wbuffer,DVAP_RESP_SQUELCH,DVAP_RESP_SQUELCH_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_SQUELCH_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQUENCY,DVAP_REQ_FREQUENCY_LEN-4)==0) {
-      wxLogMessage(wxT("DVAP_REQ_FREQUENCY"));
-      ::memcpy(m_wbuffer,DVAP_RESP_FREQUENCY,DVAP_RESP_FREQUENCY_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_FREQUENCY_LEN);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_FREQUENCY"));
+    ::memcpy(m_wbuffer,DVAP_RESP_FREQUENCY,DVAP_RESP_FREQUENCY_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_FREQUENCY_LEN);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_START,DVAP_REQ_START_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_START"));
-      ::memcpy(m_wbuffer,DVAP_RESP_START,DVAP_RESP_START_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
-      m_bStarted = true;
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_START"));
+    ::memcpy(m_wbuffer,DVAP_RESP_START,DVAP_RESP_START_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
+    m_bStarted = true;
+    return 1;
+
   } else if(::memcmp(m_buffer,DVAP_REQ_STOP,DVAP_REQ_STOP_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_STOP"));
-      ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
-      m_bStarted = false;
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_STOP"));
+    ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
+    m_bStarted = false;
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQLIMITS,DVAP_REQ_FREQLIMITS_LEN)==0) {
-      wxLogMessage(wxT("DVAP_REQ_FREQLIMITS"));
-      ::memcpy(m_wbuffer,DVAP_RESP_FREQLIMITS,DVAP_RESP_FREQLIMITS_LEN);
-      long low = 144000000;
-      long high = 145999999;
-      ::memcpy(&m_wbuffer[4], &low, 4);
-      ::memcpy(&m_wbuffer[8], &high, 4);
-      ::write(m_fd, m_wbuffer, DVAP_RESP_FREQLIMITS_LEN+8);
-      return 1;
+    wxLogMessage(wxT("DVAP_REQ_FREQLIMITS"));
+    ::memcpy(m_wbuffer,DVAP_RESP_FREQLIMITS,DVAP_RESP_FREQLIMITS_LEN);
+    long low = 144000000;
+    long high = 145999999;
+    ::memcpy(&m_wbuffer[4], &low, 4);
+    ::memcpy(&m_wbuffer[8], &high, 4);
+    ::write(m_fd, m_wbuffer, DVAP_RESP_FREQLIMITS_LEN+8);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
+    ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
+    //See DVAP specification doc
+    m_wbuffer[1] = 0x60;
+    SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
+
     wxString cs,r1,r2,my,sx;
     char buffer[9];
     buffer[9] = 0;
@@ -182,11 +187,16 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
     wxLogMessage(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+    return 1;
 
   } else if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
     SendToInstance(m_buffer, len);
+    return 1;
+
   } else {
     dumper("Other", m_buffer, len);
+    return 1;
+
   }
 }
 
