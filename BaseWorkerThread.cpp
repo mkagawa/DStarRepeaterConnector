@@ -48,7 +48,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId)
 }
 
 CBaseWorkerThread::~CBaseWorkerThread() {
-  wxLogMessage(wxT("%c Destructor for myThread"), m_siteId);
+  wxLogMessage(wxT("%c Destructor of CBaseWorkerThread"), m_siteId);
 }
 
 int CBaseWorkerThread::ProcessData() {

@@ -61,7 +61,7 @@ bool CRepeaterConnectorApp::OnInit() {
   }
 
   wxLog* logger = new wxLogStream(&std::cout);
-  logger->SetFormatter(new MyLogFormatter);
+  logger->SetFormatter(new CRepeaterConnectorLogFormatter);
   wxLog::SetActiveTarget(logger);
   wxLogMessage(wxT("M OnInit"));
 
