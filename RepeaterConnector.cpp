@@ -39,8 +39,9 @@ int CRepeaterConnectorApp::OnExit() {
 }
 
 void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
-  parser.AddSwitch(wxT("nolog"), wxEmptyString, wxEmptyString, wxCMD_LINE_PARAM_OPTIONAL);
-  parser.AddSwitch(wxT("g"),       wxEmptyString, wxEmptyString, wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("log"), wxEmptyString, wxT("log level"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("rcfg1"), wxEmptyString, wxT("dstarrepeater 1 config file"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("rcfg2"), wxEmptyString, wxT("dstarrepeater 2 config file"), wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
 
@@ -65,8 +66,9 @@ bool CRepeaterConnectorApp::OnInit() {
   wxLogMessage(wxT("M OnInit"));
 
   //make two instances of worker thread
+  char siteIds[] = { 'A', 'B', 'C', 'D', 'E' };
   for(int i = 0; i < 2; i++ ) {
-    CBaseWorkerThread *pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP);
+    CBaseWorkerThread *pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, siteIds[i]);
     wxThreadError e = pThread->Create();
     if(e != wxThreadError::wxTHREAD_NO_ERROR) {
       delete pThread;

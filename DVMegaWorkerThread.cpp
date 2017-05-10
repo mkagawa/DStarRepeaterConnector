@@ -30,8 +30,8 @@ CDVMegaWorkerThread::~CDVMegaWorkerThread()
 {
 }
 
-CDVMegaWorkerThread::CDVMegaWorkerThread()
- :CBaseWorkerThread(InstType::DVMega)
+CDVMegaWorkerThread::CDVMegaWorkerThread(char siteId)
+ :CBaseWorkerThread(siteId)
 {
 }
 

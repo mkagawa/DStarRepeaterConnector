@@ -15,10 +15,10 @@
 
 class CDVMegaWorkerThread : public CBaseWorkerThread {
   public:
-    CDVMegaWorkerThread();
-    virtual ~CDVMegaWorkerThread();
+    CDVMegaWorkerThread(char siteId);
+    ~CDVMegaWorkerThread();
 
   private:
-    virtual int ProcessData() wxOVERRIDE;
+    int ProcessData() wxOVERRIDE;
 };
 

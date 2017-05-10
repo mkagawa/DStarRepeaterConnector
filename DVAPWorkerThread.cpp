@@ -29,8 +29,8 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 {
 }
 
-CDVAPWorkerThread::CDVAPWorkerThread()
- :CBaseWorkerThread(InstType::DVAP),
+CDVAPWorkerThread::CDVAPWorkerThread(char siteId)
+ :CBaseWorkerThread(siteId),
   m_bStarted(false),
   m_prev_status_ts(chrono::high_resolution_clock::now())
 {
@@ -43,14 +43,26 @@ int CDVAPWorkerThread::ProcessData() {
   wxMemoryBuffer* pBuf;
   if(m_SendingQueue.ReceiveTimeout(0, pBuf)!=wxMSGQUEUE_TIMEOUT) {
     unsigned char* data = (unsigned char*)pBuf->GetData();
+    m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
+
     if(::memcmp(DVAP_GMSK_DATA,data,2) == 0 && ::memcmp(GMSK_END, &data[6], 6) == 0) {
-      dumper("REM**", data, pBuf->GetDataLen());
+      dumper("R****", data, pBuf->GetDataLen());
     } else {
       dumper("REMOT", data, pBuf->GetDataLen());
     }
     delete pBuf;
+
+    if(!m_bStarted) {
+      return 1;
+    }
+
+    if(!m_bTx) {
+      m_bTx = true;
+      ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
+      m_wbuffer[4] = 1;
+      ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+    }
   }
-  
 
   size_t len = ::read(m_fd, m_buffer, DVAP_HEADER_LENGTH);
   if(len == -1) {
@@ -182,7 +194,6 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
     //See DVAP specification doc
     m_wbuffer[1] = 0x60;
-    SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
 
     //For logging purpose
     wxString cs,r1,r2,my,sx;
@@ -194,6 +205,11 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
     wxLogMessage(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+
+    //empty G1/G2 value, and force CQCQCQ to To field
+    ::memcpy(&m_buffer[25], "CQCQCQ  ", 8);
+    ::memcpy(&m_buffer[9], "                ", 16);
+    SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
@@ -215,6 +231,6 @@ void CDVAPWorkerThread::dumper(const char* header, unsigned char* buff, int len)
     s.Printf(wxT("%02.2X "), buff[i]);
     dump += s;
   }
-  wxLogMessage(wxT("%5s: %s"), header, dump);
+  wxLogTrace(wxT("%5s: %s"), header, dump);
 }
 

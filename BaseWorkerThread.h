@@ -30,6 +30,7 @@
 #include <wx/log.h>
 #include <wx/msgqueue.h> 
 #include <wx/buffer.h> 
+#include <wx/time.h> 
 
 #include "Const.h"
 
@@ -44,32 +45,39 @@ WX_DEFINE_ARRAY_PTR(wxThread*, wxArrayThread);
 
 class CBaseWorkerThread : public wxThread {
   public:
-    CBaseWorkerThread(InstType);
-    virtual ~CBaseWorkerThread();
-    static CBaseWorkerThread* CreateInstance(InstType);
+    CBaseWorkerThread(char);
+    virtual ~CBaseWorkerThread() = 0;
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId);
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
 
   private:
     InstType m_type;
     int m_slavefd;
     wxArrayThread m_threads;
+    char m_siteId;  //one byte of identifier for this thread
 
   protected: 
     void SendToInstance(unsigned char* data, int len);
     // thread execution starts here
-    virtual void *Entry() wxOVERRIDE;
-    virtual int ProcessData();
+    virtual void *Entry();
+    virtual int ProcessData() = 0;
     virtual void OnExit();
 
     wxString m_devName;
-    int m_fd;
+    int m_fd = -1;
     unsigned char m_buffer[DVAP_BUFFER_LENGTH];
     unsigned char m_wbuffer[DVAP_BUFFER_LENGTH];
 
-    bool m_txEnabled, m_checksum, m_tx, m_txSpace;
-    int space;
+    //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
+    //int space;
+
+    wxDateTime m_lastTxPacketTimeStamp;
+    bool m_bTx;
 
     wxMessageQueue<wxMemoryBuffer *> m_SendingQueue;
+
+    //inticats ready to receive packet
+    bool m_initialized = false;
 };
 
 #endif

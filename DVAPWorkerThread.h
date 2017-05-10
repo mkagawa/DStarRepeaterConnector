@@ -33,11 +33,11 @@
 using namespace std;
 class CDVAPWorkerThread : public CBaseWorkerThread {
   public:
-    CDVAPWorkerThread();
-    virtual ~CDVAPWorkerThread();
+    CDVAPWorkerThread(char siteId);
+    ~CDVAPWorkerThread();
 
   private:
-    virtual int ProcessData() wxOVERRIDE;
+    int ProcessData() wxOVERRIDE;
     chrono::time_point<chrono::high_resolution_clock> m_prev_status_ts;
     bool m_bStarted;
 

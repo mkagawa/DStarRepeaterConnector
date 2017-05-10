@@ -115,6 +115,8 @@ const unsigned char DVAP_RESP_HEADER[] = {0x2F, 0x60, 0x00, 0x00, 0x00, 0x00, 0x
 										  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 const unsigned int  DVAP_RESP_HEADER_LEN = 47U;
 
+//This message is sent whenever there is a change in the PTT state of the DVAP as an unsolicited type
+//msg (does not need to be requested)
 const unsigned char DVAP_RESP_PTT[] = {0x05, 0x20, 0x18, 0x01, 0x00};
 const unsigned int  DVAP_RESP_PTT_LEN = 5U;
 
