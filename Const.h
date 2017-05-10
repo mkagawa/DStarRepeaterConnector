@@ -138,4 +138,9 @@ const unsigned int DVAP_MAX_RESPONSES = 20U;
 const unsigned int DVAP_BUFFER_LENGTH = 200U;
 
 const unsigned int DVAP_DUMP_LENGTH = 30U;
+
+
+//Start from buff[6]
+const unsigned char GMSK_END[] = { 0x55, 0x55, 0x55, 0x55, 0xC8, 0x7A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }; 
+
 #endif

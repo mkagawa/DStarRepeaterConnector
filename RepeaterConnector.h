@@ -24,6 +24,17 @@
 WX_DEFINE_ARRAY_PTR(CBaseWorkerThread*, wxArrayBaseWorkerThread);
 WX_DEFINE_ARRAY_INT(int, wxFdArray);
 
+class MyLogFormatter : public wxLogFormatter {
+  public:
+  virtual wxString Format(wxLogLevel level,
+                          const wxString& msg,
+                          const wxLogRecordInfo& info) const {
+    return wxString::Format(wxT("%s [%d][%d]: %s"),
+    	wxDateTime(info.timestamp).Format("%Y-%m-%d %H:%M:%S"),
+	(int)level, (int)(info.threadId & 0xFFFF), msg.c_str());
+  }
+
+};
 
 class CRepeaterConnectorApp : public wxApp {
 public:

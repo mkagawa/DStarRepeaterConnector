@@ -36,12 +36,18 @@ CDVAPWorkerThread::CDVAPWorkerThread()
 {
 }
 
+
 int CDVAPWorkerThread::ProcessData() {
   //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
   wxMemoryBuffer* pBuf;
   if(m_SendingQueue.ReceiveTimeout(0, pBuf)!=wxMSGQUEUE_TIMEOUT) {
-    dumper("REMOT", (unsigned char*)pBuf->GetData(), pBuf->GetDataLen());
+    unsigned char* data = (unsigned char*)pBuf->GetData();
+    if(::memcmp(DVAP_GMSK_DATA,data,2) == 0 && ::memcmp(GMSK_END, &data[6], 6) == 0) {
+      dumper("REM**", data, pBuf->GetDataLen());
+    } else {
+      dumper("REMOT", data, pBuf->GetDataLen());
+    }
     delete pBuf;
   }
   
@@ -178,6 +184,7 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[1] = 0x60;
     SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
 
+    //For logging purpose
     wxString cs,r1,r2,my,sx;
     char buffer[9];
     buffer[9] = 0;

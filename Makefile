@@ -1,4 +1,4 @@
-CXXFLAGS += -g -I/usr/lib64/wx/include/gtk3-unicode-3.1 -I/usr/include/wx-3.1 -D_FILE_OFFSET_BITS=64 -DWXUSINGDLL -D__WXGTK__ -DwxUSE_GUI=0 -pthread
+CXXFLAGS += -g -I/usr/lib64/wx/include/gtk3-unicode-3.1 -I/usr/include/wx-3.1 -D_FILE_OFFSET_BITS=64 -DWXUSINGDLL -D__WXGTK__ -DwxUSE_GUI=0 -pthread -DwxUSE_THREADS=1
 
 #-std=c++0x 
 #wx-config -libs
@@ -8,7 +8,7 @@ LDLIBS = -g -lutil -pthread   -lwx_gtk3u_xrc-3.1 -lwx_gtk3u_html-3.1 -lwx_gtk3u_
 
 all: repeaterconnector
 
-repeaterconnector: DVMegaWorkerThread.o DVAPWorkerThread.o BaseWorkerThread.o RepeaterConnector.o DVAPWorkerThread.h BaseWorkerThread.h
+repeaterconnector: DVMegaWorkerThread.o DVAPWorkerThread.o BaseWorkerThread.o RepeaterConnector.o DVAPWorkerThread.h BaseWorkerThread.h RepeaterConnector.h
 	$(LINK.cpp) $^ $(LDLIBS) -o $@
 
 

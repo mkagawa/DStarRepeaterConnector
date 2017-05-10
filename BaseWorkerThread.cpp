@@ -41,7 +41,7 @@ CBaseWorkerThread::CBaseWorkerThread(InstType type)
     return;
   }
   m_devName = devname;
-  wxLogMessage(wxT("%d Device has created: %s"), m_fd, m_devName);
+  wxLogMessage(wxT("%d Device has been created: %s"), m_fd, m_devName);
 }
 
 CBaseWorkerThread::~CBaseWorkerThread() {
@@ -80,9 +80,11 @@ void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
 }
 
 void CBaseWorkerThread::SendToInstance(unsigned char* data, int len) {
+  //TODO add locking
+  //TODO CCITT check sum here
   for(int i = 0; i < m_threads.GetCount(); i++) {
-    wxMemoryBuffer *buf = new wxMemoryBuffer();
-    buf->AppendData(m_buffer, len);
+    wxMemoryBuffer *buf = new wxMemoryBuffer(len);
+    buf->AppendData(data, len);
     ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(buf);
   }
 }
