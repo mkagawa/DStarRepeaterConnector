@@ -59,6 +59,10 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
 //
 bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
+  if(parser.Found("v")) {
+    cout << wxString::Format(wxT("%s - %s"), APPLICATION_NAME, SW_VERSION);
+    return false;
+  }
   parser.Found("rcfg", &m_basedsrarrepeaterconfigfile);
   if( access( m_basedsrarrepeaterconfigfile, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
@@ -106,8 +110,6 @@ void CRepeaterConnectorApp::OnSignal(int num) {
 
 //Initialization of the program
 bool CRepeaterConnectorApp::OnInit() {
-  wxLogInfo(wxT("Starting %s - %s"), APPLICATION_NAME, SW_VERSION);
-
   //Signal Handlers (SIGINT and SIGKILL)
   signal(SIGTERM, CRepeaterConnectorApp::OnSignal);
   signal(SIGINT, CRepeaterConnectorApp::OnSignal);
@@ -123,7 +125,8 @@ bool CRepeaterConnectorApp::OnInit() {
   wxLog::SetActiveTarget(logger);
   wxLog::EnableLogging();
   //wxLog::SetVerbose();
-  wxLogInfo(wxT("M OnInit"));
+  wxLogMessage(wxT("Starting %s - %s"), APPLICATION_NAME, SW_VERSION);
+  //wxLogInfo(wxT("M OnInit"));
 
   //make two instances of worker thread
   int i;
