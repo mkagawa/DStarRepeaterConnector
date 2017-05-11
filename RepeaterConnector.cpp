@@ -20,6 +20,10 @@
 #include "Const.h"
 #include <signal.h>
 
+
+
+using namespace std;
+
 wxIMPLEMENT_APP(CRepeaterConnectorApp);
 
 int CRepeaterConnectorApp::OnExit() {
@@ -39,10 +43,60 @@ int CRepeaterConnectorApp::OnExit() {
 }
 
 void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
-  parser.AddSwitch(wxT("log"), wxEmptyString, wxT("log level"), wxCMD_LINE_PARAM_OPTIONAL);
-  parser.AddSwitch(wxT("rcfg1"), wxEmptyString, wxT("dstarrepeater 1 config file"), wxCMD_LINE_PARAM_OPTIONAL);
-  parser.AddSwitch(wxT("rcfg2"), wxEmptyString, wxT("dstarrepeater 2 config file"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("v"), wxEmptyString, wxT("show version"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("logdir"), wxEmptyString, wxT("log dir"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddOption(wxT("rcfg"), wxEmptyString, wxT("base dstarrepeater config file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+  for(int i=1;i<=MAX_MODULES;i++) {
+    parser.AddOption(wxString::Format(wxT("mod%d"),i), wxEmptyString,
+      wxString::Format(wxT("dstarrepeater %d module letter [A-E]"),i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+  }
+  parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   wxAppConsole::OnInitCmdLine(parser);
+}	
+
+//
+//Executable parameter validation
+//
+bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
+
+  parser.Found("rcfg", &m_basedsrarrepeaterconfigfile);
+  if( access( m_basedsrarrepeaterconfigfile, F_OK ) == -1 ) {
+    cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
+    return false;
+  }
+  CBaseWorkerThread::m_dstarRepeaterConfigFile = m_basedsrarrepeaterconfigfile;
+
+  parser.Found("rptcmd", &m_dstarrepeaterexe);
+  if( access( m_dstarrepeaterexe, F_OK ) == -1 ) {
+    cout << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
+    return false;
+  }
+
+  wxConfigBase *m_dstarRepeaterConfig = new wxFileConfig("dstarrepeater",SW_VENDOR,
+         m_basedsrarrepeaterconfigfile,"",wxCONFIG_USE_LOCAL_FILE);
+  //m_dstarRepeaterConfig->Read("callsign",&m_myNodeCallSign);
+  //m_dstarRepeaterConfig->Read("gateway",&m_myGatewayCallSign);
+  delete  m_dstarRepeaterConfig;
+
+  wxString tmpM;
+  for(int i=1;i<=MAX_MODULES;i++) {
+     parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
+     m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
+     if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
+       cout << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
+       return false;
+     }
+  }
+
+  parser.Found("rptcmd", &m_dstarrepeaterexe);
+  if(m_module[0]==m_module[1] || 
+      m_module[1]==m_module[2] ||
+      m_module[2]==m_module[0]) {
+     cout << "ERROR: module ids (mod1,mod2) must be unique" << endl;
+     return false;
+  }
+
+  return wxAppConsole::OnCmdLineParsed(parser);
 }	
 
 //Signal handler
@@ -53,6 +107,7 @@ void CRepeaterConnectorApp::OnSignal(int num) {
 //Initialization of the program
 bool CRepeaterConnectorApp::OnInit() {
 
+  //Signal Handlers (SIGINT and SIGKILL)
   signal(SIGTERM, CRepeaterConnectorApp::OnSignal);
   signal(SIGINT, CRepeaterConnectorApp::OnSignal);
 
@@ -60,27 +115,34 @@ bool CRepeaterConnectorApp::OnInit() {
     return false;
   }
 
+  //Logging
   wxLog* logger = new wxLogStream(&std::cout);
   logger->SetFormatter(new CRepeaterConnectorLogFormatter);
   wxLog::SetLogLevel(wxLOG_Max);
   wxLog::SetActiveTarget(logger);
   wxLog::EnableLogging();
-  wxLog::SetVerbose();
+  //wxLog::SetVerbose();
   wxLogInfo(wxT("M OnInit"));
 
   //make two instances of worker thread
-  char siteIds[] = { 'A', 'B', 'C', 'D', 'E' };
-  for(int i = 0; i < 2; i++ ) {
-    CBaseWorkerThread *pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, siteIds[i]);
-    wxThreadError e = pThread->Create();
-    if(e != wxThreadError::wxTHREAD_NO_ERROR) {
-      delete pThread;
-      pThread = NULL;
-      wxLogMessage(wxT("Thread create err: %d"), e);
-      return false; 
+  int i;
+  try {
+    for(i = 0; i < MAX_MODULES; i++) {
+      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i]);
+      wxThreadError e = pThread->Create();
+      if(e != wxThreadError::wxTHREAD_NO_ERROR) {
+        delete pThread;
+        pThread = NULL;
+        wxLogMessage(wxT("Thread create err: %d"), e);
+        return false; 
+      }
+      pThread->SetPriority(100);
+      m_threads.Add(pThread);
     }
-    pThread->SetPriority(100);
-    m_threads.Add(pThread);
+  } catch(MyException* ex) {
+    cout << wxString::Format(wxT("ERROR: Failed to initialize worker thread %c, ex: %s"), m_module[i], ex->GetMessage()) << endl;
+    delete ex;
+    return false;
   }
 
   //register other instance each oher

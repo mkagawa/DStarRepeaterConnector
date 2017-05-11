@@ -25,7 +25,7 @@
 #include <wx/wxprec.h>
 #include <wx/wx.h>
 #include <wx/regex.h>
-//#include <wx/thread.h>
+#include <wx/fileconf.h>
 #include <wx/memory.h> 
 #include <wx/log.h>
 #include <wx/msgqueue.h> 
@@ -42,6 +42,24 @@ enum InstType {
 };
 
 WX_DEFINE_ARRAY_PTR(wxThread*, wxArrayThread);
+
+
+class MyException : public std::exception {
+  public:
+    MyException(wxString msg) 
+      :m_msg(msg)
+    {
+  
+    }
+    wxString GetMessage() { return m_msg; }
+  private:
+    wxString m_msg;
+};
+
+
+//
+//Data structure used to exchange GMSK data between threads
+//
 class CTxData {
   private:
     wxMemoryBuffer m_buffer;
@@ -64,14 +82,15 @@ class CBaseWorkerThread : public wxThread {
   public:
     CBaseWorkerThread(char);
     virtual ~CBaseWorkerThread() = 0;
-    static CBaseWorkerThread* CreateInstance(InstType, char siteId);
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId);
+    static wxString m_dstarRepeaterConfigFile;
 
   private:
     InstType m_type;
     int m_slavefd;
     wxArrayThread m_threads;
-    char m_siteId;  //one byte of identifier for this thread
+    char m_siteId;
 
   protected: 
     void SendToInstance(unsigned char* data, size_t len);

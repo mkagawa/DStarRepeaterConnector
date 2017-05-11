@@ -37,12 +37,30 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId)
     m_siteId(siteId),
     m_bTx(false)
 {
+  wxConfigBase *m_dstarRepeaterConfig = new wxFileConfig("dstarrepeater","NW6UP",m_dstarRepeaterConfigFile,"",wxCONFIG_USE_LOCAL_FILE);
+  m_dstarRepeaterConfig->Read("callsign",&m_myNodeCallSign);
+  m_dstarRepeaterConfig->Read("gateway",&m_myGatewayCallSign);
+  delete  m_dstarRepeaterConfig;
+
+  if(m_myGatewayCallSign == "") {
+    throw new MyException(wxString::Format(wxT("Gateway CallSign is not set in config file %s"),"B"));
+  }
+  if(m_myNodeCallSign == "") {
+    throw new MyException(wxString::Format(wxT("Repeater CallSign is not set in config file %s"),"A"));
+  }
+
+  m_myNodeCallSign = wxString::Format(wxT("%7s%c"),m_myNodeCallSign.Mid(0,7), m_siteId);
+  wxLogMessage(wxT("Repeater CallSign: %s, Gateway CallSign: %s"), m_myNodeCallSign, m_myGatewayCallSign);
+
+
   char devname[50];
   if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
-    wxLogMessage(wxT("Failed to open virtual port, errno:%d"), errno);
-    return;
+    throw new MyException(wxString::Format(wxT("Failed to open virtual port, errno:%d"), errno));
   }
   m_devName = devname;
+  if(m_devName == "") {
+    throw new MyException(wxString::Format(wxT("Virtual device name wasn't assigned by system. need to reboot the machine?")));
+  }
   wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
 
   wxString configMessage = wxString::Format("perl -p -i -e 's#dvapPort=.*#dvapPort=%s#' /etc/dstarrepeater%c", m_devName, m_siteId);
@@ -83,7 +101,7 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
 
 void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
   if(ptr != this) {
-    wxLogMessage(wxT("other thread is added"));
+    wxLogInfo(wxT("Other thread instance is added"));
     m_threads.Add(ptr);
   }
 }
@@ -162,4 +180,6 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
   }
   wxLogInfo(wxT("%5s: %s"), header, dump);
 }
+
+wxString CBaseWorkerThread::m_dstarRepeaterConfigFile = "";
 

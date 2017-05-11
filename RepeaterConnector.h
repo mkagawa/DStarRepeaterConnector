@@ -22,7 +22,6 @@
 #include "BaseWorkerThread.h"
 
 WX_DEFINE_ARRAY_PTR(CBaseWorkerThread*, wxArrayBaseWorkerThread);
-WX_DEFINE_ARRAY_INT(int, wxFdArray);
 
 class CRepeaterConnectorLogFormatter : public wxLogFormatter {
   public:
@@ -40,6 +39,7 @@ class CRepeaterConnectorApp : public wxApp {
 public:
    virtual bool OnInit();
    virtual void OnInitCmdLine(wxCmdLineParser &);
+   virtual bool OnCmdLineParsed(wxCmdLineParser &);
    virtual int OnExit();
    wxArrayBaseWorkerThread m_threads;
    wxArrayInt m_masterFd;
@@ -48,6 +48,10 @@ public:
 
 private:
    static void OnSignal(int sig);
+
+   wxString m_basedsrarrepeaterconfigfile;
+   wxString m_dstarrepeaterexe;
+   unsigned char m_module[MAX_MODULES];
 };
 
 wxDECLARE_APP(CRepeaterConnectorApp);

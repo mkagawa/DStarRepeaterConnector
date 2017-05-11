@@ -18,8 +18,10 @@
 #ifndef __CONST__
 #define __CONST__
 
-const unsigned char SW_VERSION[] = "0.5.0";
+const unsigned char SW_VERSION[] = wxT("0.5.0");
+const unsigned char SW_VENDOR[] = wxT("NW6UP");
 
+#define MAX_MODULES 2
 
 //----------DVMega---------
 

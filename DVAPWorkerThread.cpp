@@ -240,9 +240,9 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //Store my local dstar repeater info
-    m_myNodeCallSign = r2;
-    m_myGatewayCallSign = r1;
-    m_curCallSign = my + sx;
+    //m_myNodeCallSign = r2;
+    //m_myGatewayCallSign = r1;
+    m_curCallSign = my + wxT("/") + sx;
 
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
