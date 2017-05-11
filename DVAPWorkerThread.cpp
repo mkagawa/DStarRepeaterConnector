@@ -41,29 +41,45 @@ int CDVAPWorkerThread::ProcessData() {
   //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
   //Check receiving queue
-  wxMemoryBuffer* pBuf;
+  CTxData* pBuf;
+  bool bClosingPacket = false;
   if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
-    unsigned char* data = (unsigned char*)pBuf->GetData();
+    auto data = pBuf->GetData();
+    auto data_len = pBuf->GetDataLen();
     m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
 
-    if(::memcmp(DVAP_GMSK_DATA,data,2) == 0 && ::memcmp(GMSK_END, &data[6], 6) == 0) {
-      dumper("R****", data, pBuf->GetDataLen());
-    } else {
-      dumper("REMOT", data, pBuf->GetDataLen());
+    //Detect closing packet pattern
+    if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,data,2) == 0 && ::memcmp(GMSK_END, &data[6], 6) == 0) {
+      bClosingPacket = true; 
     }
-    delete pBuf;
 
-    if(m_bStarted) {
-      if(!m_bTx) {
-        m_bTx = true;
-        ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
-        m_wbuffer[4] = 1;
-        ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
-      }
+    if(wxLog::GetVerbose()) {
+      dumper(bClosingPacket ? "CLOSE" : "REMOT", data, data_len);
     }
+
+    if(m_bStarted && !m_bTx && !bClosingPacket) {
+      m_bTx = true;
+      ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
+      m_wbuffer[4] = 1;
+      ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+    }
+
+    //Write to the host
+    ::write(m_fd, data, data_len);
+    delete pBuf;
   }
 
-  //Send current status to the host
+  //watch dog for TX.
+  //if current time is more than 1 sec from previous TX packet 
+  //or packet type is "closing" stop sending
+  if(m_bStarted && m_bTx && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 1000)) {
+    ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
+    m_wbuffer[4] = 1;
+    ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+    m_bTx = false;
+  }
+
+  //Send current status to the host in every 100ms
   if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 100) {
     ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
     //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
@@ -77,6 +93,7 @@ int CDVAPWorkerThread::ProcessData() {
     m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
   }
 
+  //Read from the host
   size_t len = ::read(m_fd, m_buffer, DVAP_HEADER_LENGTH);
   if(len == -1) {
     if(errno == EAGAIN) {
@@ -90,30 +107,32 @@ int CDVAPWorkerThread::ProcessData() {
     return 0; //error
   }
 
+  //data must be more than 2 bytes
   if(len < 2) {
     return -1;
   }
 
+  //calculate data length
   size_t data_len = m_buffer[0] + 256 * (m_buffer[1] & 0x1F);
   char type = (m_buffer[1] & 0xe0) >> 5;
   m_lastReceivedFromHostTimeStamp = wxGetUTCTimeMillis();
 
   //the data_len should not be longer than DVAP_HEADER_LEN
-  //data may be garbled
+  //if so, data may be garbled. ignore this series
   if(data_len > sizeof(m_buffer)) {
     return -1;
   }
 
-  size_t temp;
   while(data_len > len) {
     Sleep(2);
     //all packets must be received within 500ms from the host
+    //otherwise discard this series
     if(wxGetUTCTimeMillis() - m_lastReceivedFromHostTimeStamp > 500) {
       return -1;
     }
-    temp = ::read(m_fd, &m_buffer[len], data_len - len);
-    if(temp > 0) {
-      len += temp;
+    size_t temp_len = ::read(m_fd, &m_buffer[len], data_len - len);
+    if(temp_len > 0) {
+      len += temp_len;
     }
   }
 
@@ -214,6 +233,11 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
     wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+
+    //Store my local dstar repeater info
+    m_myNodeCallSign = r2;
+    m_myGatewayCallSign = r1;
+    m_curCallSign = my + sx;
 
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);

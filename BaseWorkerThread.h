@@ -42,6 +42,23 @@ enum InstType {
 };
 
 WX_DEFINE_ARRAY_PTR(wxThread*, wxArrayThread);
+class CTxData {
+  private:
+    wxMemoryBuffer m_buffer;
+    wxString m_myCallSign;
+  public:
+    wxString GetCallSign() { return m_myCallSign; }
+    unsigned char* GetData() { return (unsigned char*)m_buffer.GetData(); }
+    size_t GetDataLen() { return m_buffer.GetDataLen(); }
+    CTxData(unsigned char* data, size_t data_len, wxString cs) {
+      m_buffer.Clear();
+      m_buffer.AppendData(data, data_len);
+      m_myCallSign = cs; 
+    }
+    ~CTxData() {
+      m_buffer.Clear();
+    }
+};
 
 class CBaseWorkerThread : public wxThread {
   public:
@@ -57,7 +74,7 @@ class CBaseWorkerThread : public wxThread {
     char m_siteId;  //one byte of identifier for this thread
 
   protected: 
-    void SendToInstance(unsigned char* data, int len);
+    void SendToInstance(unsigned char* data, size_t len);
     // thread execution starts here
     virtual void *Entry();
     virtual int ProcessData() = 0;
@@ -68,6 +85,10 @@ class CBaseWorkerThread : public wxThread {
     unsigned char m_buffer[DVAP_BUFFER_LENGTH];
     unsigned char m_wbuffer[DVAP_BUFFER_LENGTH];
 
+    wxString m_myNodeCallSign;
+    wxString m_myGatewayCallSign;
+    wxString m_curCallSign;
+
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;
 
@@ -75,7 +96,7 @@ class CBaseWorkerThread : public wxThread {
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTx;
 
-    wxMessageQueue<wxMemoryBuffer *> m_SendingQueue;
+    wxMessageQueue<CTxData *> m_SendingQueue;
 
     //inticats ready to receive packet
     bool m_initialized = false;
