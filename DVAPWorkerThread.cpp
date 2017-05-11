@@ -216,8 +216,8 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //empty G1/G2 value, and force CQCQCQ to To field
-    ::memcpy(&m_buffer[25], "CQCQCQ  ", 8);
-    ::memcpy(&m_buffer[9], "                ", 16);
+    ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
+    ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
     //dumper("After ",m_wbuffer,DVAP_HEADER_LEN);
 
