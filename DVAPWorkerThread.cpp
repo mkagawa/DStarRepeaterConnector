@@ -32,7 +32,7 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 CDVAPWorkerThread::CDVAPWorkerThread(char siteId)
  :CBaseWorkerThread(siteId),
   m_bStarted(false),
-  m_prev_status_ts(chrono::high_resolution_clock::now())
+  m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
 }
 
@@ -40,8 +40,9 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId)
 int CDVAPWorkerThread::ProcessData() {
   //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
+  //Check receiving queue
   wxMemoryBuffer* pBuf;
-  if(m_SendingQueue.ReceiveTimeout(0, pBuf)!=wxMSGQUEUE_TIMEOUT) {
+  if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
     unsigned char* data = (unsigned char*)pBuf->GetData();
     m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
 
@@ -52,46 +53,41 @@ int CDVAPWorkerThread::ProcessData() {
     }
     delete pBuf;
 
-    if(!m_bStarted) {
-      return 1;
+    if(m_bStarted) {
+      if(!m_bTx) {
+        m_bTx = true;
+        ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
+        m_wbuffer[4] = 1;
+        ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+      }
     }
+  }
 
-    if(!m_bTx) {
-      m_bTx = true;
-      ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
-      m_wbuffer[4] = 1;
-      ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
-    }
+  //Send current status to the host
+  if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 100) {
+    ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
+    //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
+    //[07][20] [90][00] [9C] [00][7F] //-100dBm squelch closed
+    //[07][20] [90][00] [00] [00][12] //Transmitting Tx fifo can except up to 18 new packets
+    //7f == Indicates Queue is empty and Tx operation will soon terminate.
+    m_wbuffer[4] = 0xb5;
+    m_wbuffer[5] = 0x01;
+    m_wbuffer[6] = 0x7f;
+    ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
+    m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
   }
 
   size_t len = ::read(m_fd, m_buffer, DVAP_HEADER_LENGTH);
   if(len == -1) {
     if(errno == EAGAIN) {
-      //empty
+      //serial buffer empty
       if(!m_bStarted) {
-        return 1;
+        return 0;
       }
-      auto now = chrono::high_resolution_clock::now();
-      std::chrono::duration<double> elapsed = now - m_prev_status_ts;
-      if(elapsed.count() > .1) {
-        //cout << "dur = " << elapsed.count() << endl;
-        m_prev_status_ts = now;
-        ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
-        //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
-        //[07][20] [90][00] [9C] [00][7F] //-100dBm squelch closed
-        //[07][20] [90][00] [00] [00][12] //Transmitting Tx fifo can except up to 18 new packets
-        //7f == Indicates Queue is empty and Tx operation will soon terminate.
-        m_wbuffer[4] = 0xb5;
-        m_wbuffer[5] = 0x01;
-        m_wbuffer[6] = 0x7f;
-        ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
-        return 1;
-      }
-
-      return -1;
+      return 0;
     }
-    wxLogMessage(wxT("serial read error, err: %d"), errno);
-    return -1; //error
+    wxLogError(wxT("serial read error, err: %d"), errno);
+    return 0; //error
   }
 
   if(len < 2) {
@@ -100,88 +96,96 @@ int CDVAPWorkerThread::ProcessData() {
 
   size_t data_len = m_buffer[0] + 256 * (m_buffer[1] & 0x1F);
   char type = (m_buffer[1] & 0xe0) >> 5;
+  m_lastReceivedFromHostTimeStamp = wxGetUTCTimeMillis();
+
   //the data_len should not be longer than DVAP_HEADER_LEN
+  //data may be garbled
   if(data_len > sizeof(m_buffer)) {
     return -1;
   }
 
   size_t temp;
   while(data_len > len) {
-    temp = ::read(m_fd, &m_buffer[len], sizeof(m_buffer)-len);
+    Sleep(2);
+    //all packets must be received within 500ms from the host
+    if(wxGetUTCTimeMillis() - m_lastReceivedFromHostTimeStamp > 500) {
+      return -1;
+    }
+    temp = ::read(m_fd, &m_buffer[len], data_len - len);
     if(temp > 0) {
       len += temp;
     }
   }
 
   if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
-    wxLogMessage(wxT("DVAP_ACK"));
+    wxLogInfo(wxT("DVAP_ACK"));
     return 1; 
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_NAME"));
+    wxLogInfo(wxT("DVAP_REQ_NAME"));
     ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
     return 1;
  
   } else if(::memcmp(m_buffer,DVAP_REQ_SERIAL,DVAP_REQ_SERIAL_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_SERIAL"));
+    wxLogInfo(wxT("DVAP_REQ_SERIAL"));
     ::memcpy(m_wbuffer,DVAP_RESP_SERIAL,DVAP_RESP_SERIAL_LEN);
     ::memcpy(&m_wbuffer[4], "12345678", 8);
     ::write(m_fd, m_wbuffer, DVAP_RESP_SERIAL_LEN+8);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FIRMWARE,DVAP_REQ_FIRMWARE_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_FIRMWARE"));
+    wxLogInfo(wxT("DVAP_REQ_FIRMWARE"));
     ::memcpy(m_wbuffer,DVAP_RESP_FIRMWARE,DVAP_RESP_FIRMWARE_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_FIRMWARE_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_MODULATION,DVAP_REQ_MODULATION_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_MODULATION"));
+    wxLogInfo(wxT("DVAP_REQ_MODULATION"));
     ::memcpy(m_wbuffer,DVAP_RESP_MODULATION,DVAP_RESP_MODULATION_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_MODULATION_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_MODE,DVAP_REQ_MODE_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_MODE"));
+    wxLogInfo(wxT("DVAP_REQ_MODE"));
     ::memcpy(m_wbuffer,DVAP_RESP_MODE,DVAP_RESP_MODE_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_MODE_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_POWER,DVAP_REQ_POWER_LEN-2)==0) {
-    wxLogMessage(wxT("DVAP_REQ_POWER"));
+    wxLogInfo(wxT("DVAP_REQ_POWER"));
     ::memcpy(m_wbuffer,DVAP_RESP_POWER,DVAP_RESP_POWER_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_POWER_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_SQUELCH,DVAP_REQ_SQUELCH_LEN-2)==0) {
-    wxLogMessage(wxT("DVAP_REQ_SQUELCH"));
+    wxLogInfo(wxT("DVAP_REQ_SQUELCH"));
     ::memcpy(m_wbuffer,DVAP_RESP_SQUELCH,DVAP_RESP_SQUELCH_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_SQUELCH_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQUENCY,DVAP_REQ_FREQUENCY_LEN-4)==0) {
-    wxLogMessage(wxT("DVAP_REQ_FREQUENCY"));
+    wxLogInfo(wxT("DVAP_REQ_FREQUENCY"));
     ::memcpy(m_wbuffer,DVAP_RESP_FREQUENCY,DVAP_RESP_FREQUENCY_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_FREQUENCY_LEN);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_START,DVAP_REQ_START_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_START"));
+    wxLogInfo(wxT("DVAP_REQ_START"));
     ::memcpy(m_wbuffer,DVAP_RESP_START,DVAP_RESP_START_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
     m_bStarted = true;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_STOP,DVAP_REQ_STOP_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_STOP"));
+    wxLogInfo(wxT("DVAP_REQ_STOP"));
     ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
     m_bStarted = false;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQLIMITS,DVAP_REQ_FREQLIMITS_LEN)==0) {
-    wxLogMessage(wxT("DVAP_REQ_FREQLIMITS"));
+    wxLogInfo(wxT("DVAP_REQ_FREQLIMITS"));
     ::memcpy(m_wbuffer,DVAP_RESP_FREQLIMITS,DVAP_RESP_FREQLIMITS_LEN);
     long low = 144000000;
     long high = 145999999;
@@ -192,6 +196,11 @@ int CDVAPWorkerThread::ProcessData() {
 
   } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
     ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
+    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+
+    //dumper("before",m_wbuffer,DVAP_HEADER_LEN);
+    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    //dumper("befor2",m_wbuffer,DVAP_HEADER_LEN);
     //See DVAP specification doc
     m_wbuffer[1] = 0x60;
 
@@ -204,11 +213,14 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
-    wxLogMessage(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+    wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_buffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_buffer[9], "                ", 16);
+    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    //dumper("After ",m_wbuffer,DVAP_HEADER_LEN);
+
     SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     return 1;
 
@@ -222,15 +234,3 @@ int CDVAPWorkerThread::ProcessData() {
 
   }
 }
-
-
-void CDVAPWorkerThread::dumper(const char* header, unsigned char* buff, int len)
-{
-  wxString dump = "", s = "";
-  for(int i = 0; i < len; i++ ) {
-    s.Printf(wxT("%02.2X "), buff[i]);
-    dump += s;
-  }
-  wxLogTrace(wxT("%5s: %s"), header, dump);
-}
-

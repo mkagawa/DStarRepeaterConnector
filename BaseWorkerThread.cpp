@@ -73,6 +73,7 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
     if(ProcessData()==0) {
       Sleep(50);
     }
+    Sleep(2);
   }
 
   return static_cast<ExitCode>(0);
@@ -137,11 +138,25 @@ static const unsigned int crc_table[256] = {
 //   is data[0]...data[len-3], and the 2 bytes of result will 
 //   be stored in data[len-2] and data[len-1]
 //
-void CalcCRC(unsigned char* data, int len) {
-  unsigned int crc = 0xffff;
-  for (int i = 0; i <= len - 2; i++) { 
-    crc = (crc << 8) ^ crc_table[(crc >> 8) ^ data[i]];
+void CBaseWorkerThread::CalcCRC(unsigned char* data, int len) {
+  unsigned short crc = 0xffff;
+
+  for (int i = 0; i <= len - 2; i++) {
+    crc = (unsigned short)((crc >> 8) ^ crc_table[(unsigned char)(crc ^ data[i])]);
+    //unsigned char temp = (crc >> 8) ^ data[i];
+    //crc = (crc << 8) ^ crc_table[temp];
   }                  
   data[len - 1] = (crc & 0xFF);
   data[len - 2] = ((crc >> 8) & 0xFF);
 }
+
+void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
+{
+  wxString dump = "", s = "";
+  for(int i = 0; i < len; i++ ) {
+    s.Printf(wxT("%02.2X "), buff[i]);
+    dump += s;
+  }
+  wxLogInfo(wxT("%5s: %s"), header, dump);
+}
+

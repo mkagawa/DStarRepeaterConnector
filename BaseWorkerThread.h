@@ -71,13 +71,19 @@ class CBaseWorkerThread : public wxThread {
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;
 
-    wxDateTime m_lastTxPacketTimeStamp;
+    wxLongLong m_lastTxPacketTimeStamp;
+    wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTx;
 
     wxMessageQueue<wxMemoryBuffer *> m_SendingQueue;
 
     //inticats ready to receive packet
     bool m_initialized = false;
+
+    static void CalcCRC(unsigned char* data, int len);
+
+    //dump m_buffer
+    static void dumper(const char* head, unsigned char* buff, int len);
 };
 
 #endif

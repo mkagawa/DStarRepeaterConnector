@@ -62,8 +62,11 @@ bool CRepeaterConnectorApp::OnInit() {
 
   wxLog* logger = new wxLogStream(&std::cout);
   logger->SetFormatter(new CRepeaterConnectorLogFormatter);
+  wxLog::SetLogLevel(wxLOG_Max);
   wxLog::SetActiveTarget(logger);
-  wxLogMessage(wxT("M OnInit"));
+  wxLog::EnableLogging();
+  wxLog::SetVerbose();
+  wxLogInfo(wxT("M OnInit"));
 
   //make two instances of worker thread
   char siteIds[] = { 'A', 'B', 'C', 'D', 'E' };

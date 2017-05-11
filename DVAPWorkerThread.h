@@ -38,10 +38,7 @@ class CDVAPWorkerThread : public CBaseWorkerThread {
 
   private:
     int ProcessData() wxOVERRIDE;
-    chrono::time_point<chrono::high_resolution_clock> m_prev_status_ts;
+    wxLongLong m_lastStatusSentTimeStamp;
     bool m_bStarted;
-
-    //dump m_buffer
-    void dumper(const char* head, unsigned char* buff, int len);
 };
 
