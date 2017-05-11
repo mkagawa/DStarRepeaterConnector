@@ -44,6 +44,7 @@ int CRepeaterConnectorApp::OnExit() {
 
 void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddSwitch(wxT("v"), wxEmptyString, wxT("show version"), wxCMD_LINE_PARAM_OPTIONAL);
+
   parser.AddSwitch(wxT("logdir"), wxEmptyString, wxT("log dir"), wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("rcfg"), wxEmptyString, wxT("base dstarrepeater config file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   for(int i=1;i<=MAX_MODULES;i++) {
@@ -59,11 +60,11 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
 //
 bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
-  if(parser.Found("v")) {
-    cout << wxString::Format(wxT("%s - %s"), APPLICATION_NAME, SW_VERSION);
+  if(parser.Found(wxT("v"))) {
+    cout << wxString::Format(wxT("%s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION)) << endl;
     return false;
   }
-  parser.Found("rcfg", &m_basedsrarrepeaterconfigfile);
+  parser.Found(wxT("rcfg"), &m_basedsrarrepeaterconfigfile);
   if( access( m_basedsrarrepeaterconfigfile, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
     return false;
@@ -125,8 +126,7 @@ bool CRepeaterConnectorApp::OnInit() {
   wxLog::SetActiveTarget(logger);
   wxLog::EnableLogging();
   //wxLog::SetVerbose();
-  wxLogMessage(wxT("Starting %s - %s"), APPLICATION_NAME, SW_VERSION);
-  //wxLogInfo(wxT("M OnInit"));
+  wxLogMessage(wxT("Starting %s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION));
 
   //make two instances of worker thread
   int i;
@@ -159,6 +159,6 @@ bool CRepeaterConnectorApp::OnInit() {
     m_threads[i]->Run();
   }
 
-  wxLogMessage(wxT("M OnInit done"));
+  wxLogInfo(wxT("CRepeaterConnectorApp::OnInit done"));
   return true;
 }
