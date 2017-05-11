@@ -94,7 +94,7 @@ class CBaseWorkerThread : public wxThread {
 
     wxLongLong m_lastTxPacketTimeStamp;
     wxLongLong m_lastReceivedFromHostTimeStamp;
-    bool m_bTx;
+    bool m_bTx = false;
 
     wxMessageQueue<CTxData *> m_SendingQueue;
 

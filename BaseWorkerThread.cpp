@@ -33,7 +33,9 @@ CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId)
 }
 
 CBaseWorkerThread::CBaseWorkerThread(char siteId)
-  : wxThread(wxTHREAD_JOINABLE), m_siteId(siteId)
+  : wxThread(wxTHREAD_JOINABLE),
+    m_siteId(siteId),
+    m_bTx(false)
 {
   char devname[50];
   if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
@@ -71,16 +73,19 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
   ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   while(!TestDestroy()){
     if(ProcessData()==0) {
-      Sleep(50);
+      wxMilliSleep(40);
     }
-    Sleep(2);
+    wxMilliSleep(3);
   }
 
   return static_cast<ExitCode>(0);
 }
 
 void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
-  m_threads.Add(ptr);
+  if(ptr != this) {
+    wxLogMessage(wxT("other thread is added"));
+    m_threads.Add(ptr);
+  }
 }
 
 void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len) {

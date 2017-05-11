@@ -58,6 +58,7 @@ int CDVAPWorkerThread::ProcessData() {
     }
 
     if(m_bStarted && !m_bTx && !bClosingPacket) {
+      wxLogMessage("TX ON");
       m_bTx = true;
       ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
       m_wbuffer[4] = 1;
@@ -65,7 +66,7 @@ int CDVAPWorkerThread::ProcessData() {
     }
 
     //Write to the host
-    ::write(m_fd, data, data_len);
+    //::write(m_fd, data, data_len);
     delete pBuf;
   }
 
@@ -77,6 +78,7 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[4] = 1;
     ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
     m_bTx = false;
+    wxLogMessage("TX OFF");
   }
 
   //Send current status to the host in every 100ms
@@ -124,17 +126,20 @@ int CDVAPWorkerThread::ProcessData() {
   }
 
   while(data_len > len) {
-    Sleep(2);
     //all packets must be received within 500ms from the host
     //otherwise discard this series
     if(wxGetUTCTimeMillis() - m_lastReceivedFromHostTimeStamp > 500) {
+      wxLogMessage("Host data timeout");
       return -1;
     }
+    wxMilliSleep(2);
     size_t temp_len = ::read(m_fd, &m_buffer[len], data_len - len);
     if(temp_len > 0) {
       len += temp_len;
     }
   }
+
+  //dumper("RECVD", m_buffer, data_len);
 
   if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
     wxLogInfo(wxT("DVAP_ACK"));
@@ -149,7 +154,7 @@ int CDVAPWorkerThread::ProcessData() {
   } else if(::memcmp(m_buffer,DVAP_REQ_SERIAL,DVAP_REQ_SERIAL_LEN)==0) {
     wxLogInfo(wxT("DVAP_REQ_SERIAL"));
     ::memcpy(m_wbuffer,DVAP_RESP_SERIAL,DVAP_RESP_SERIAL_LEN);
-    ::memcpy(&m_wbuffer[4], "12345678", 8);
+    ::memcpy(&m_wbuffer[4], "MT123456", 9); //including 0x00
     ::write(m_fd, m_wbuffer, DVAP_RESP_SERIAL_LEN+8);
     return 1;
 
