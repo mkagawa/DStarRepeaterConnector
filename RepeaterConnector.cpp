@@ -44,7 +44,9 @@ int CRepeaterConnectorApp::OnExit() {
 
 void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddSwitch(wxT("v"), wxEmptyString, wxT("show version"), wxCMD_LINE_PARAM_OPTIONAL);
-
+  if(wxGetApp().argc > 1 && wxGetApp().argv[1] == wxT("-v")) {
+    return;
+  }
   parser.AddSwitch(wxT("logdir"), wxEmptyString, wxT("log dir"), wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("rcfg"), wxEmptyString, wxT("base dstarrepeater config file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   for(int i=1;i<=MAX_MODULES;i++) {
