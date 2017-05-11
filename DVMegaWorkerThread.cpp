@@ -78,11 +78,11 @@ int CDVMegaWorkerThread::ProcessData() {
     case DVRPTR_GET_STATUS :
       if( size == 1 ) {
         len = ::read(m_fd, &m_buffer[4], size - 1 + 2); //check sum only
-        m_txEnabled = true; //(m_buffer[4U] & 0x02U) == 0x02U;
-        m_checksum  = false; //(m_buffer[4U] & 0x08U) == 0x08U;
-        m_tx        = false; //(m_buffer[5U] & 0x02U) == 0x02U;
-        m_txSpace   = 0xfc; //m_buffer[8U];
-        space       = m_txSpace - m_buffer[9U];
+        //m_txEnabled = true; //(m_buffer[4U] & 0x02U) == 0x02U;
+        //m_checksum  = false; //(m_buffer[4U] & 0x08U) == 0x08U;
+        //m_tx        = false; //(m_buffer[5U] & 0x02U) == 0x02U;
+        //m_txSpace   = 0xfc; //m_buffer[8U];
+        //space       = m_txSpace - m_buffer[9U];
 
         m_wbuffer[pos++] = DVRPTR_FRAME_START;
         m_wbuffer[pos++] = 8;
@@ -91,7 +91,7 @@ int CDVMegaWorkerThread::ProcessData() {
         m_wbuffer[pos++] = 0x47; //flags txEnabled:0x2(on),checkSum:0x8(off)
         m_wbuffer[pos++] = 0;    //flags tx:0x02 
         m_wbuffer[pos++] = 0x15; //??
-        m_wbuffer[pos++] = m_txSpace;
+        m_wbuffer[pos++] = 0; //m_txSpace;
         m_wbuffer[pos++] = 0;    //status unsend frames
         m_wbuffer[pos++] = 0;    //total packets to send
         m_wbuffer[pos++] = 0x00; //cs
