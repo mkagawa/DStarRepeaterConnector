@@ -106,6 +106,7 @@ void CRepeaterConnectorApp::OnSignal(int num) {
 
 //Initialization of the program
 bool CRepeaterConnectorApp::OnInit() {
+  wxLogInfo(wxT("Starting %s - %s"), APPLICATION_NAME, SW_VERSION);
 
   //Signal Handlers (SIGINT and SIGKILL)
   signal(SIGTERM, CRepeaterConnectorApp::OnSignal);
