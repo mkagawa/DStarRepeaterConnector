@@ -57,6 +57,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   parser.AddOption(wxT("confdir"), wxEmptyString, wxT("config file directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("logdir"), wxEmptyString, wxT("log directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("startrptr"), wxEmptyString, wxT("start dstarrepeater"), wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
 
@@ -108,6 +109,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     m_logDir = realpath(".", buff);
   }
 
+  CBaseWorkerThread::m_bStartDstarRepeater = parser.Found(wxT("startrptr"));
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
 
   parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);

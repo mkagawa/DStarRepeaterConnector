@@ -109,7 +109,6 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   delete config2;
 
   m_dstarRepeaterCmdLine = m_dstarRepeaterExe + " -logdir:" + m_rLogDir + " -confdir:" + m_rConfDir;
-  wxLogInfo(wxT("Execute: %s"), m_dstarRepeaterCmdLine);
 
   if(m_myGatewayCallSign == "") {
     throw new MyException(wxString::Format(wxT("Gateway CallSign is not set in config file %s"),"B"));
@@ -141,7 +140,12 @@ void CBaseWorkerThread::OnExit() {
 
 CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
   wxLogMessage(wxT("CBaseWorkerThread started (%c)"), m_siteId);
-  wxExecute(m_dstarRepeaterCmdLine);
+  if(m_bStartDstarRepeater) {
+    wxLogInfo(wxT("Execute: %s"), m_dstarRepeaterCmdLine);
+    wxExecute(m_dstarRepeaterCmdLine);
+  } else {
+    wxLogInfo(wxT("run this command manually: %s"), m_dstarRepeaterCmdLine);
+  }
 
   int flags = ::fcntl(m_fd, F_GETFL, 0);
   ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
@@ -241,3 +245,4 @@ wxString CBaseWorkerThread::m_dstarRepeaterConfigFile = "";
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
+bool CBaseWorkerThread::m_bStartDstarRepeater = false;

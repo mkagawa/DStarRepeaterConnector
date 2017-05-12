@@ -41,7 +41,7 @@ int CDVAPWorkerThread::ProcessData() {
   //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
   //Check receiving queue
-  CTxData* pBuf;
+  CTxData *pBuf;
   bool bClosingPacket = false;
   if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
     auto data = pBuf->GetData();

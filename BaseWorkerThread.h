@@ -89,6 +89,7 @@ class CBaseWorkerThread : public wxThread {
     static wxString m_dstarRepeaterExe;
     static wxString m_dstarRepeaterCallSign; //base callsign no suffix
     static long m_dstarGatewayPort;
+    static bool m_bStartDstarRepeater;
 
     static wxString m_dstarRepeaterConfigFile;
 
