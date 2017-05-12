@@ -1,4 +1,4 @@
-CXXFLAGS += -g -std=gnu++11 -DwxUSE_THREADS=1 $(shell wx-config --cxxflags)
+CXXFLAGS += -g -std=gnu++11 -DwxUSE_THREADS=1 $(shell wx-config --cxxflags base)
 
 
 #-std=c++0x 
