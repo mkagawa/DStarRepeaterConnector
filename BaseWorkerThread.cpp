@@ -108,6 +108,10 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   delete config;
   delete config2;
 
+  wxString cmd = m_dstarRepeaterExe + " -logdir:" + m_rLogDir + " -confdir:" + m_rConfDir;
+  //wxExecute(cmd);
+  cout << "cmd: " << cmd << endl;
+
   wxConfigBase *m_dstarRepeaterConfig = new wxFileConfig("dstarrepeater","NW6UP",m_dstarRepeaterConfigFile,"",wxCONFIG_USE_LOCAL_FILE);
   delete  m_dstarRepeaterConfig;
 

@@ -70,12 +70,12 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     return false;
   }
 
-  char buff[100];
+  char buff[200];
   if(parser.Found(wxT("confdir"), &m_confDir)) {
     if(m_confDir.Right(1) == "/") {
       m_confDir.RemoveLast();
-      m_confDir = realpath(m_confDir, buff);
     }
+    m_confDir = realpath(m_confDir, buff);
     if(!mkdir(m_confDir, 0700)) {
       cout << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
       return false;
@@ -86,8 +86,8 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   if(parser.Found(wxT("logdir"), &m_logDir)) {
     if(m_logDir.Right(1) == "/") {
       m_logDir.RemoveLast();
-      m_logDir = realpath(m_logDir, buff);
     }
+    m_logDir = realpath(m_logDir, buff);
     if(!mkdir(m_logDir, 0700)) {
       cout << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
       return false;
@@ -97,9 +97,10 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   }
   //cout << "log: " << m_logDir << " conf:" << m_confDir << " err: " << errno << endl;
 
-
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
+
   parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);
+  CBaseWorkerThread::m_dstarRepeaterConfigFile = realpath(CBaseWorkerThread::m_dstarRepeaterConfigFile, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterConfigFile, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
     return false;
@@ -110,6 +111,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   }
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
+  CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterExe, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
     return false;
