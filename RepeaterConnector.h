@@ -48,7 +48,7 @@ public:
 private:
    static void OnSignal(int sig);
    unsigned char m_module[MAX_MODULES];
-   int m_portNumber[MAX_MODULES];
+   unsigned long m_portNumber[MAX_MODULES];
 
 };
 

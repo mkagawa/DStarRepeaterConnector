@@ -30,7 +30,7 @@ CDVMegaWorkerThread::~CDVMegaWorkerThread()
 {
 }
 
-CDVMegaWorkerThread::CDVMegaWorkerThread(char siteId, int portNumber)
+CDVMegaWorkerThread::CDVMegaWorkerThread(char siteId, unsigned int portNumber)
  :CBaseWorkerThread(siteId,portNumber)
 {
 }

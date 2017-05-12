@@ -23,7 +23,7 @@
 using namespace std;
 class CDVAPWorkerThread;
 
-CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId, int portNumber) {
+CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId, unsigned int portNumber) {
   switch(type) {
     case InstType::DVAP:
     return new CDVAPWorkerThread(siteId, portNumber);
@@ -32,7 +32,7 @@ CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId,
   }
 }
 
-CBaseWorkerThread::CBaseWorkerThread(char siteId, int portNumber)
+CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
     m_portNumber(portNumber),
@@ -51,7 +51,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, int portNumber)
   //Config file
   wxString str,var;
   long  dummy;
-  wxString localConfigFile = "./config" + siteId;
+  wxString localConfigFile = wxString("./config") + siteId;
   wxLogMessage("localConfig=%s", localConfigFile);
   wxConfigBase *config = new wxFileConfig("","","",
         CBaseWorkerThread::m_dstarRepeaterConfigFile, wxCONFIG_USE_GLOBAL_FILE);

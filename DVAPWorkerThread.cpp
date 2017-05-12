@@ -29,7 +29,7 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 {
 }
 
-CDVAPWorkerThread::CDVAPWorkerThread(char siteId, int portNumber)
+CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber)
  :CBaseWorkerThread(siteId, portNumber),
   m_bStarted(false),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())

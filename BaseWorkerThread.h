@@ -79,17 +79,17 @@ class CTxData {
 
 class CBaseWorkerThread : public wxThread {
   public:
-    CBaseWorkerThread(char,int);
+    CBaseWorkerThread(char,unsigned int);
     virtual ~CBaseWorkerThread() = 0;
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
-    static CBaseWorkerThread* CreateInstance(InstType, char siteId, int portNumber);
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber);
     static wxString m_dstarRepeaterExe;
     static wxString m_dstarRepeaterConfigFile;
 
   private:
     InstType m_type;
     int m_slavefd;
-    int m_portNumber;
+    unsigned int m_portNumber;
     wxArrayThread m_threads;
     char m_siteId;
 

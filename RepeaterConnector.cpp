@@ -84,13 +84,13 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
      parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
      m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
      tmpM.Mid(2).ToLong(&l);
-     m_portNumber[i-i] = (int)l; 
+     m_portNumber[i-1] = l;
      if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
        cout << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
        return false;
      }
-     if(m_portNumber[i-1] < 20000) {
-       cout << wxString::Format(wxT("ERROR: port number for mod%d is incorrect (ex. -mod%d A,20011)"), i, i) << endl;
+     if(l < 20000U) {
+       cout << wxString::Format(wxT("ERROR: port number %d for mod%d is incorrect (ex. -mod%d A,20011)"), l, i, i) << endl;
        return false;
      }
   }
