@@ -101,6 +101,7 @@ class CBaseWorkerThread : public wxThread {
 
     wxString m_rLogDir; //for dstarrepeater
     wxString m_rConfDir; //for dstarrepeater
+    wxString m_dstarRepeaterCmdLine;
 
   protected: 
     void SendToInstance(unsigned char* data, size_t len);

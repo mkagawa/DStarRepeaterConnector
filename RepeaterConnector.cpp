@@ -72,30 +72,41 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
   char buff[200];
   if(parser.Found(wxT("confdir"), &m_confDir)) {
+    if(m_confDir.Left(1) != "." && m_confDir.Left(1) != "/") {
+      m_confDir = "./" + m_confDir;
+    }
     if(m_confDir.Right(1) == "/") {
       m_confDir.RemoveLast();
     }
-    m_confDir = realpath(m_confDir, buff);
-    if(!mkdir(m_confDir, 0700)) {
-      cout << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
-      return false;
+    wxString confDir = realpath(m_confDir, buff);
+    if(confDir=="") {
+      if(mkdir(m_confDir, 0700)) {
+        cout << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
+        return false;
+      }
     }
+    m_confDir = realpath(m_confDir, buff);
   } else {
     m_confDir = realpath(".", buff);
   }
   if(parser.Found(wxT("logdir"), &m_logDir)) {
+    if(m_logDir.Left(1) != "." && m_logDir.Left(1) != "/") {
+      m_logDir = "./" + m_logDir;
+    }
     if(m_logDir.Right(1) == "/") {
       m_logDir.RemoveLast();
     }
-    m_logDir = realpath(m_logDir, buff);
-    if(!mkdir(m_logDir, 0700)) {
-      cout << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
-      return false;
+    wxString logDir = realpath(m_logDir, buff);
+    if(logDir.Trim()=="") {
+      if(mkdir(m_logDir, 0700)) {
+        cout << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
+        return false;
+      }
     }
+    m_logDir = realpath(m_logDir, buff);
   } else {
     m_logDir = realpath(".", buff);
   }
-  //cout << "log: " << m_logDir << " conf:" << m_confDir << " err: " << errno << endl;
 
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
 
@@ -112,10 +123,12 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
   CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
+  CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterExe, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
     return false;
   }
+  
 
   wxString tmpM, tmpP;
   long l;
