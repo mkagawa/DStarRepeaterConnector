@@ -29,8 +29,8 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 {
 }
 
-CDVAPWorkerThread::CDVAPWorkerThread(char siteId)
- :CBaseWorkerThread(siteId),
+CDVAPWorkerThread::CDVAPWorkerThread(char siteId, int portNumber)
+ :CBaseWorkerThread(siteId, portNumber),
   m_bStarted(false),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
@@ -146,9 +146,12 @@ int CDVAPWorkerThread::ProcessData() {
     return 1; 
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {
+    //treat as reset signal
     wxLogInfo(wxT("DVAP_REQ_NAME"));
     ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
+    m_bTx = false;
+    m_bStarted = false;
     return 1;
  
   } else if(::memcmp(m_buffer,DVAP_REQ_SERIAL,DVAP_REQ_SERIAL_LEN)==0) {
@@ -240,17 +243,21 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //Store my local dstar repeater info
-    //m_myNodeCallSign = r2;
-    //m_myGatewayCallSign = r1;
-    m_curCallSign = my + wxT("/") + sx;
+    m_curCallSign = my;
+    m_curSuffix= sx;
 
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-    //dumper("After ",m_wbuffer,DVAP_HEADER_LEN);
 
-    SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
+    wxLogMessage(wxT("cur:%s"),m_curCallSign);
+    wxLogMessage(wxT("nod:%s"),m_myNodeCallSign);
+    if(m_curCallSign != m_myNodeCallSign) {
+      SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
+    } else {
+      wxLogMessage("this message is sent by repeater. won't be forwarded");
+    }
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {

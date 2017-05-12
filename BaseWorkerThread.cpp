@@ -23,23 +23,67 @@
 using namespace std;
 class CDVAPWorkerThread;
 
-CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId) {
+CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId, int portNumber) {
   switch(type) {
     case InstType::DVAP:
-    return new CDVAPWorkerThread(siteId);
+    return new CDVAPWorkerThread(siteId, portNumber);
     case InstType::DVMega:
-    return new CDVMegaWorkerThread(siteId);
+    return new CDVMegaWorkerThread(siteId, portNumber);
   }
 }
 
-CBaseWorkerThread::CBaseWorkerThread(char siteId)
+CBaseWorkerThread::CBaseWorkerThread(char siteId, int portNumber)
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
+    m_portNumber(portNumber),
     m_bTx(false)
 {
+  char devname[50];
+  if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
+    throw new MyException(wxString::Format(wxT("Failed to open virtual port, errno:%d"), errno));
+  }
+  m_devName = devname;
+  if(m_devName == "") {
+    throw new MyException(wxString::Format(wxT("Virtual device name wasn't assigned by system. need to reboot the machine?")));
+  }
+  wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
+
+  //Config file
+  wxString str,var;
+  long  dummy;
+  wxString localConfigFile = "./config" + siteId;
+  wxLogMessage("localConfig=%s", localConfigFile);
+  wxConfigBase *config = new wxFileConfig("","","",
+        CBaseWorkerThread::m_dstarRepeaterConfigFile, wxCONFIG_USE_GLOBAL_FILE);
+  wxConfigBase *config2 = new wxFileConfig("","",
+        localConfigFile, "", wxCONFIG_USE_LOCAL_FILE);
+  bool bCont = config->GetFirstEntry(str, dummy);
+  while ( bCont ) {
+    //aNames.Add(str);
+    bCont = config->GetNextEntry(str, dummy);
+    bool ret;
+    config->Read(str,&var);
+    if(str=="callsign") {
+      var[7] = m_siteId;
+      ret = config2->Write(str,var);
+      m_myNodeCallSign = var;
+    } else if(str=="modemType") {
+      ret = config2->Write(str,"DVAP");
+    } else if(str=="localPort") {
+      ret = config2->Write(str,wxString::Format("%d",m_portNumber));
+    } else if(str=="dvapPort") {
+      ret = config2->Write(str,m_devName);
+    } else if(str=="gateway") {
+      ret = config2->Write(str,var);
+      m_myGatewayCallSign = var;
+    } else {
+      ret = config2->Write(str,var);
+    }
+  }
+  delete config;
+  delete config2;
+
   wxConfigBase *m_dstarRepeaterConfig = new wxFileConfig("dstarrepeater","NW6UP",m_dstarRepeaterConfigFile,"",wxCONFIG_USE_LOCAL_FILE);
-  m_dstarRepeaterConfig->Read("callsign",&m_myNodeCallSign);
-  m_dstarRepeaterConfig->Read("gateway",&m_myGatewayCallSign);
   delete  m_dstarRepeaterConfig;
 
   if(m_myGatewayCallSign == "") {
@@ -51,17 +95,6 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId)
 
   m_myNodeCallSign = wxString::Format(wxT("%7s%c"),m_myNodeCallSign.Mid(0,7), m_siteId);
   wxLogMessage(wxT("Repeater CallSign: %s, Gateway CallSign: %s"), m_myNodeCallSign, m_myGatewayCallSign);
-
-
-  char devname[50];
-  if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
-    throw new MyException(wxString::Format(wxT("Failed to open virtual port, errno:%d"), errno));
-  }
-  m_devName = devname;
-  if(m_devName == "") {
-    throw new MyException(wxString::Format(wxT("Virtual device name wasn't assigned by system. need to reboot the machine?")));
-  }
-  wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
 
   wxString configMessage = wxString::Format("perl -p -i -e 's#dvapPort=.*#dvapPort=%s#' /etc/dstarrepeater%c", m_devName, m_siteId);
   wxLogMessage(configMessage);
@@ -182,4 +215,5 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
 }
 
 wxString CBaseWorkerThread::m_dstarRepeaterConfigFile = "";
+wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 

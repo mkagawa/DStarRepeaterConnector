@@ -20,10 +20,8 @@
 #include <unistd.h>
 #include <chrono>
 
-#include <wx/wxprec.h>
 #include <wx/wx.h>
 #include <wx/regex.h>
-//#include <wx/thread.h>
 #include <wx/memory.h> 
 #include <wx/log.h> 
 
@@ -33,7 +31,7 @@
 using namespace std;
 class CDVAPWorkerThread : public CBaseWorkerThread {
   public:
-    CDVAPWorkerThread(char siteId);
+    CDVAPWorkerThread(char siteId, int);
     ~CDVAPWorkerThread();
 
   private:

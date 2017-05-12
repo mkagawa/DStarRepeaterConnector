@@ -51,7 +51,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddOption(wxT("rcfg"), wxEmptyString, wxT("base dstarrepeater config file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   for(int i=1;i<=MAX_MODULES;i++) {
     parser.AddOption(wxString::Format(wxT("mod%d"),i), wxEmptyString,
-      wxString::Format(wxT("dstarrepeater %d module letter [A-E]"),i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+      wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod1:A,20011)"),i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   }
   parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   wxAppConsole::OnInitCmdLine(parser);
@@ -66,45 +66,40 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     cout << wxString::Format(wxT("%s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION)) << endl;
     return false;
   }
-  parser.Found(wxT("rcfg"), &m_basedsrarrepeaterconfigfile);
-  if( access( m_basedsrarrepeaterconfigfile, F_OK ) == -1 ) {
+  parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);
+  if( access( CBaseWorkerThread::m_dstarRepeaterConfigFile, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
     return false;
   }
-  CBaseWorkerThread::m_dstarRepeaterConfigFile = m_basedsrarrepeaterconfigfile;
 
-  parser.Found("rptcmd", &m_dstarrepeaterexe);
-  if( access( m_dstarrepeaterexe, F_OK ) == -1 ) {
+  parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
+  if( access( CBaseWorkerThread::m_dstarRepeaterExe, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
     return false;
   }
 
-  wxConfigBase *m_dstarRepeaterConfig = new wxFileConfig("dstarrepeater",SW_VENDOR,
-         m_basedsrarrepeaterconfigfile,"",wxCONFIG_USE_LOCAL_FILE);
-  //m_dstarRepeaterConfig->Read("callsign",&m_myNodeCallSign);
-  //m_dstarRepeaterConfig->Read("gateway",&m_myGatewayCallSign);
-  delete  m_dstarRepeaterConfig;
-
-  wxString tmpM;
+  wxString tmpM, tmpP;
   for(int i=1;i<=MAX_MODULES;i++) {
      parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
+     parser.Found(wxString::Format(wxT("port%d"),i), &tmpP);
      m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
      if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
        cout << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
        return false;
      }
+     
   }
 
-  parser.Found("rptcmd", &m_dstarrepeaterexe);
+  parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
   if(m_module[0]==m_module[1] || 
-      m_module[1]==m_module[2] ||
-      m_module[2]==m_module[0]) {
+     m_module[1]==m_module[2] ||
+     m_module[2]==m_module[0]) {
      cout << "ERROR: module ids (mod1,mod2) must be unique" << endl;
      return false;
   }
 
   return wxAppConsole::OnCmdLineParsed(parser);
-}	
+}
 
 //Signal handler
 void CRepeaterConnectorApp::OnSignal(int num) {
@@ -134,7 +129,7 @@ bool CRepeaterConnectorApp::OnInit() {
   int i;
   try {
     for(i = 0; i < MAX_MODULES; i++) {
-      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i]);
+      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i]);
       wxThreadError e = pThread->Create();
       if(e != wxThreadError::wxTHREAD_NO_ERROR) {
         delete pThread;

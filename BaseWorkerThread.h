@@ -22,7 +22,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <wx/wxprec.h>
 #include <wx/wx.h>
 #include <wx/regex.h>
 #include <wx/fileconf.h>
@@ -80,15 +79,17 @@ class CTxData {
 
 class CBaseWorkerThread : public wxThread {
   public:
-    CBaseWorkerThread(char);
+    CBaseWorkerThread(char,int);
     virtual ~CBaseWorkerThread() = 0;
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
-    static CBaseWorkerThread* CreateInstance(InstType, char siteId);
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId, int portNumber);
+    static wxString m_dstarRepeaterExe;
     static wxString m_dstarRepeaterConfigFile;
 
   private:
     InstType m_type;
     int m_slavefd;
+    int m_portNumber;
     wxArrayThread m_threads;
     char m_siteId;
 
@@ -107,6 +108,7 @@ class CBaseWorkerThread : public wxThread {
     wxString m_myNodeCallSign;
     wxString m_myGatewayCallSign;
     wxString m_curCallSign;
+    wxString m_curSuffix;
 
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;

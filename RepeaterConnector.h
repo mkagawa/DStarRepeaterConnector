@@ -3,7 +3,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <wx/wxprec.h>
 #include <wx/wx.h>
 #include <wx/cmdline.h>
 #include <wx/regex.h>
@@ -48,10 +47,9 @@ public:
 
 private:
    static void OnSignal(int sig);
-
-   wxString m_basedsrarrepeaterconfigfile;
-   wxString m_dstarrepeaterexe;
    unsigned char m_module[MAX_MODULES];
+   int m_portNumber[MAX_MODULES];
+
 };
 
 wxDECLARE_APP(CRepeaterConnectorApp);
