@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -43,13 +44,15 @@ public:
    wxArrayBaseWorkerThread m_threads;
    wxArrayInt m_masterFd;
    wxArrayInt m_slaveFd;
+
    wxCriticalSection m_pThreadCS;    // protects the m_pThread pointer
 
 private:
+   std::fstream m_logStream;
    static void OnSignal(int sig);
    unsigned char m_module[MAX_MODULES];
    unsigned long m_portNumber[MAX_MODULES];
-
+   wxString m_logDir;
 };
 
 wxDECLARE_APP(CRepeaterConnectorApp);

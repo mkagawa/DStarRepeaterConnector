@@ -63,19 +63,32 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
     bCont = config->GetNextEntry(str, dummy);
     bool ret;
     config->Read(str,&var);
-    if(str=="callsign") {
-      var[7] = m_siteId;
-      ret = config2->Write(str,var);
-      m_myNodeCallSign = var;
-    } else if(str=="modemType") {
-      ret = config2->Write(str,"DVAP");
-    } else if(str=="localPort") {
-      ret = config2->Write(str,wxString::Format("%d",m_portNumber));
-    } else if(str=="dvapPort") {
-      ret = config2->Write(str,m_devName);
-    } else if(str=="gateway") {
+    if(str==wxT("announcementTime")) {
+      ret = config2->Write(str,"0");
+    } else if(str==wxT("beaconTime")) {
+      ret = config2->Write(str,"0");
+    } else if(str==wxT("gateway")) {
+      var = wxString::Format(wxT("%-7s%c"), m_dstarRepeaterCallSign, 'G');
       ret = config2->Write(str,var);
       m_myGatewayCallSign = var;
+    } else if(str==wxT("callsign")) {
+      var = wxString::Format(wxT("%-7s%c"), m_dstarRepeaterCallSign, m_siteId);
+      ret = config2->Write(str,var);
+      m_myNodeCallSign = var;
+    } else if(str==wxT("modemType")) {
+      ret = config2->Write(str,wxT("DVAP"));
+    } else if(str==wxT("localPort")) {
+      ret = config2->Write(str,wxString::Format("%d",m_portNumber));
+    } else if(str==wxT("dvapPort")) {
+      ret = config2->Write(str,m_devName);
+    } else if(str==wxT("dvapFrequency")) {
+      ret = config2->Write(str,wxT("145990000"));
+    } else if(str==wxT("dvapPower")) {
+      ret = config2->Write(str,wxT("1"));
+    } else if(str==wxT("dvapPower")) {
+      ret = config2->Write(str,wxT("1"));
+    } else if(str==wxT("dvapSquelch")) {
+      ret = config2->Write(str,wxT("-99"));
     } else {
       ret = config2->Write(str,var);
     }
@@ -93,11 +106,8 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
     throw new MyException(wxString::Format(wxT("Repeater CallSign is not set in config file %s"),"A"));
   }
 
-  m_myNodeCallSign = wxString::Format(wxT("%7s%c"),m_myNodeCallSign.Mid(0,7), m_siteId);
+  m_myNodeCallSign = wxString::Format(wxT("%-7s%c"),m_myNodeCallSign.Mid(0,7), m_siteId);
   wxLogMessage(wxT("Repeater CallSign: %s, Gateway CallSign: %s"), m_myNodeCallSign, m_myGatewayCallSign);
-
-  wxString configMessage = wxString::Format("perl -p -i -e 's#dvapPort=.*#dvapPort=%s#' /etc/dstarrepeater%c", m_devName, m_siteId);
-  wxLogMessage(configMessage);
 }
 
 CBaseWorkerThread::~CBaseWorkerThread() {
@@ -216,4 +226,5 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
 
 wxString CBaseWorkerThread::m_dstarRepeaterConfigFile = "";
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
-
+wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
+long CBaseWorkerThread::m_dstarGatewayPort = 20010;

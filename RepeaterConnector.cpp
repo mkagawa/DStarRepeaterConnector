@@ -47,13 +47,15 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   if(wxGetApp().argc > 1 && wxGetApp().argv[1] == wxT("-v")) {
     return;
   }
-  parser.AddSwitch(wxT("logdir"), wxEmptyString, wxT("log dir"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddOption(wxT("callsign"), wxEmptyString, wxT("gw and repeater base callsign without suffix"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+  parser.AddOption(wxT("gwport"), wxEmptyString, wxT("gw port number (default:20010)"), wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("rcfg"), wxEmptyString, wxT("base dstarrepeater config file"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   for(int i=1;i<=MAX_MODULES;i++) {
     parser.AddOption(wxString::Format(wxT("mod%d"),i), wxEmptyString,
-      wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod1:A,20011)"),i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+      wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod%d:A,20011)"),i,i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   }
   parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+  parser.AddOption(wxT("logdir"), wxEmptyString, wxT("log directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
 
@@ -66,10 +68,23 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     cout << wxString::Format(wxT("%s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION)) << endl;
     return false;
   }
+  if(parser.Found(wxT("logdir"), &m_logDir)) {
+    if(!mkdir(m_logDir, 0700)) {
+      cout << "ERROR: couldn't create log dir " << m_logDir << endl;
+      return false;
+    }
+  } else {
+    m_logDir = ".";
+  }
+  parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
   parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);
   if( access( CBaseWorkerThread::m_dstarRepeaterConfigFile, F_OK ) == -1 ) {
     cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
     return false;
+  }
+
+  if(!parser.Found("gwport", &CBaseWorkerThread::m_dstarGatewayPort)) {
+    CBaseWorkerThread::m_dstarGatewayPort = 20010;
   }
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
@@ -99,8 +114,8 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   if(m_module[0]==m_module[1] || 
      m_module[1]==m_module[2] ||
      m_module[2]==m_module[0]) {
-     cout << "ERROR: module ids (mod1,mod2) must be unique" << endl;
-     return false;
+    cout << "ERROR: module ids (mod1,mod2) must be unique" << endl;
+    return false;
   }
 
   return wxAppConsole::OnCmdLineParsed(parser);
@@ -122,12 +137,15 @@ bool CRepeaterConnectorApp::OnInit() {
   }
 
   //Logging
-  wxLog* logger = new wxLogStream(&std::cout);
+  auto logFileName = wxString::Format("%s/repeaterconnector.log", m_logDir);
+  m_logStream.open(logFileName, fstream::out | fstream::app);
+  auto logger = new wxLogStream(&m_logStream);
   logger->SetFormatter(new CRepeaterConnectorLogFormatter);
   wxLog::SetLogLevel(wxLOG_Max);
   wxLog::SetActiveTarget(logger);
   wxLog::EnableLogging();
-  //wxLog::SetVerbose();
+
+  wxLogMessage(wxT("--------------------"));
   wxLogMessage(wxT("Starting %s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION));
 
   //make two instances of worker thread
