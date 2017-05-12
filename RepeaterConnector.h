@@ -53,6 +53,7 @@ private:
    unsigned char m_module[MAX_MODULES];
    unsigned long m_portNumber[MAX_MODULES];
    wxString m_logDir;
+   wxString m_confDir;
 };
 
 wxDECLARE_APP(CRepeaterConnectorApp);

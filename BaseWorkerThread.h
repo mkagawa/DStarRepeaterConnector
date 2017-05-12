@@ -79,10 +79,13 @@ class CTxData {
 
 class CBaseWorkerThread : public wxThread {
   public:
-    CBaseWorkerThread(char,unsigned int);
+    CBaseWorkerThread(char,unsigned int,wxString,wxString);
     virtual ~CBaseWorkerThread() = 0;
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
-    static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber);
+
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber, wxString confDir, wxString logDir);
+
+    //public static property
     static wxString m_dstarRepeaterExe;
     static wxString m_dstarRepeaterConfigFile;
     static wxString m_dstarRepeaterCallSign; //base callsign no suffix
@@ -94,6 +97,9 @@ class CBaseWorkerThread : public wxThread {
     unsigned int m_portNumber;
     wxArrayThread m_threads;
     char m_siteId;
+
+    wxString m_rLogDir; //for dstarrepeater
+    wxString m_rConfDir; //for dstarrepeater
 
   protected: 
     void SendToInstance(unsigned char* data, size_t len);

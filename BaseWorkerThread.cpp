@@ -23,21 +23,27 @@
 using namespace std;
 class CDVAPWorkerThread;
 
-CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId, unsigned int portNumber) {
+CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId,
+    unsigned int portNumber, wxString confDir, wxString logDir) {
   switch(type) {
     case InstType::DVAP:
-    return new CDVAPWorkerThread(siteId, portNumber);
+    return new CDVAPWorkerThread(siteId, portNumber, confDir, logDir);
     case InstType::DVMega:
-    return new CDVMegaWorkerThread(siteId, portNumber);
+    return new CDVMegaWorkerThread(siteId, portNumber, confDir, logDir);
   }
 }
 
-CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
+CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxString confDir, wxString logDir)
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
+    m_rLogDir(logDir),
+    m_rConfDir(confDir),
     m_portNumber(portNumber),
     m_bTx(false)
 {
+  mkdir(confDir, 0700);
+  mkdir(logDir, 0700);
+
   char devname[50];
   if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
     throw new MyException(wxString::Format(wxT("Failed to open virtual port, errno:%d"), errno));
@@ -51,7 +57,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
   //Config file
   wxString str,var;
   long  dummy;
-  wxString localConfigFile = wxString("./config") + siteId;
+  wxString localConfigFile = wxString::Format(wxT("%s/dstarrepeater"), m_rConfDir);
   wxLogMessage("localConfig=%s", localConfigFile);
   wxConfigBase *config = new wxFileConfig("","","",
         CBaseWorkerThread::m_dstarRepeaterConfigFile, wxCONFIG_USE_GLOBAL_FILE);
@@ -87,6 +93,12 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber)
       ret = config2->Write(str,wxT("1"));
     } else if(str==wxT("dvapPower")) {
       ret = config2->Write(str,wxT("1"));
+    } else if(str.StartsWith("mmdvm")) {
+      ret = config2->Write(str,wxT(""));
+    } else if(str.StartsWith("dvrptr")) {
+      ret = config2->Write(str,wxT(""));
+    } else if(str.StartsWith("dvmega")) {
+      ret = config2->Write(str,wxT(""));
     } else if(str==wxT("dvapSquelch")) {
       ret = config2->Write(str,wxT("-99"));
     } else {

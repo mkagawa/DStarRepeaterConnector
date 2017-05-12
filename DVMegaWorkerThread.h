@@ -14,7 +14,7 @@
 
 class CDVMegaWorkerThread : public CBaseWorkerThread {
   public:
-    CDVMegaWorkerThread(char siteId, unsigned int portNumber);
+    CDVMegaWorkerThread(char siteId, unsigned int portNumber,wxString,wxString);
     ~CDVMegaWorkerThread();
 
   private:

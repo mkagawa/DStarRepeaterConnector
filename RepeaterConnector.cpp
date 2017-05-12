@@ -19,7 +19,7 @@
 #include "BaseWorkerThread.h"
 #include "Const.h"
 #include <signal.h>
-
+#include <stdlib.h>
 
 
 using namespace std;
@@ -55,6 +55,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
       wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod%d:A,20011)"),i,i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   }
   parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+  parser.AddOption(wxT("confdir"), wxEmptyString, wxT("config file directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("logdir"), wxEmptyString, wxT("log directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
@@ -68,14 +69,35 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     cout << wxString::Format(wxT("%s - %s"), wxString(APPLICATION_NAME), wxString(SW_VERSION)) << endl;
     return false;
   }
-  if(parser.Found(wxT("logdir"), &m_logDir)) {
-    if(!mkdir(m_logDir, 0700)) {
-      cout << "ERROR: couldn't create log dir " << m_logDir << endl;
+
+  char buff[100];
+  if(parser.Found(wxT("confdir"), &m_confDir)) {
+    if(m_confDir.Right(1) == "/") {
+      m_confDir.RemoveLast();
+      m_confDir = realpath(m_confDir, buff);
+    }
+    if(!mkdir(m_confDir, 0700)) {
+      cout << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
       return false;
     }
   } else {
-    m_logDir = ".";
+    m_confDir = realpath(".", buff);
   }
+  if(parser.Found(wxT("logdir"), &m_logDir)) {
+    if(m_logDir.Right(1) == "/") {
+      m_logDir.RemoveLast();
+      m_logDir = realpath(m_logDir, buff);
+    }
+    if(!mkdir(m_logDir, 0700)) {
+      cout << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
+      return false;
+    }
+  } else {
+    m_logDir = realpath(".", buff);
+  }
+  //cout << "log: " << m_logDir << " conf:" << m_confDir << " err: " << errno << endl;
+
+
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
   parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);
   if( access( CBaseWorkerThread::m_dstarRepeaterConfigFile, F_OK ) == -1 ) {
@@ -152,7 +174,9 @@ bool CRepeaterConnectorApp::OnInit() {
   int i;
   try {
     for(i = 0; i < MAX_MODULES; i++) {
-      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i]);
+      wxString logDir = wxString::Format(wxT("%s/log%c"), m_logDir, m_module[i]);
+      wxString confDir = wxString::Format(wxT("%s/conf%c"), m_confDir, m_module[i]);
+      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i], confDir, logDir);
       wxThreadError e = pThread->Create();
       if(e != wxThreadError::wxTHREAD_NO_ERROR) {
         delete pThread;

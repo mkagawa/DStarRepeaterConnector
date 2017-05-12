@@ -30,8 +30,8 @@ CDVMegaWorkerThread::~CDVMegaWorkerThread()
 {
 }
 
-CDVMegaWorkerThread::CDVMegaWorkerThread(char siteId, unsigned int portNumber)
- :CBaseWorkerThread(siteId,portNumber)
+CDVMegaWorkerThread::CDVMegaWorkerThread(char siteId, unsigned int portNumber,wxString confDir,wxString logDir)
+ :CBaseWorkerThread(siteId,portNumber,confDir,logDir)
 {
 }
 
