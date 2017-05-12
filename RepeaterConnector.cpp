@@ -79,15 +79,20 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   }
 
   wxString tmpM, tmpP;
+  long l;
   for(int i=1;i<=MAX_MODULES;i++) {
      parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
-     parser.Found(wxString::Format(wxT("port%d"),i), &tmpP);
      m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
+     tmpM.Mid(2).ToLong(&l);
+     m_portNumber[i-i] = (int)l; 
      if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
        cout << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
        return false;
      }
-     
+     if(m_portNumber[i-1] < 20000) {
+       cout << wxString::Format(wxT("ERROR: port number for mod%d is incorrect (ex. -mod%d A,20011)"), i, i) << endl;
+       return false;
+     }
   }
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
