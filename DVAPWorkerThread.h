@@ -35,7 +35,7 @@ class CDVAPWorkerThread : public CBaseWorkerThread {
     ~CDVAPWorkerThread();
 
   private:
-    int ProcessData() wxOVERRIDE;
+    int ProcessData();
     wxLongLong m_lastStatusSentTimeStamp;
     bool m_bStarted;
 };

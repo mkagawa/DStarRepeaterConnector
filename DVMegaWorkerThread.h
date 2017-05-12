@@ -18,6 +18,6 @@ class CDVMegaWorkerThread : public CBaseWorkerThread {
     ~CDVMegaWorkerThread();
 
   private:
-    int ProcessData() wxOVERRIDE;
+    int ProcessData();
 };
 
