@@ -246,3 +246,4 @@ wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
+bool CBaseWorkerThread::m_bEnableForwardPackets = false;

@@ -66,7 +66,9 @@ int CDVAPWorkerThread::ProcessData() {
     }
 
     //Write to the host
-    //::write(m_fd, data, data_len);
+    if(m_bEnableForwardPackets) {
+      ::write(m_fd, data, data_len);
+    }
     delete pBuf;
   }
 
@@ -138,8 +140,6 @@ int CDVAPWorkerThread::ProcessData() {
       len += temp_len;
     }
   }
-
-  //dumper("RECVD", m_buffer, data_len);
 
   if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
     wxLogInfo(wxT("DVAP_ACK"));
@@ -225,9 +225,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
-    //dumper("before",m_wbuffer,DVAP_HEADER_LEN);
     //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-    //dumper("befor2",m_wbuffer,DVAP_HEADER_LEN);
     //See DVAP specification doc
     m_wbuffer[1] = 0x60;
 
@@ -253,7 +251,7 @@ int CDVAPWorkerThread::ProcessData() {
 
     wxLogMessage(wxT("cur:%s"),m_curCallSign);
     wxLogMessage(wxT("nod:%s"),m_myNodeCallSign);
-    if(m_curCallSign != m_myNodeCallSign) {
+    if(!m_curCallSign.StartsWith(" ") && m_curCallSign.CmpNoCase(m_myNodeCallSign) != 0) {
       SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     } else {
       wxLogMessage("this message is sent by repeater. won't be forwarded");

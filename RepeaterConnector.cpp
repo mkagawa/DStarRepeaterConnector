@@ -58,6 +58,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddOption(wxT("confdir"), wxEmptyString, wxT("config file directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("logdir"), wxEmptyString, wxT("log directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddSwitch(wxT("startrptr"), wxEmptyString, wxT("start dstarrepeater"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("forward"), wxEmptyString, wxT("enables forewarding packet in each repeaters"), wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
 
@@ -82,7 +83,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     wxString confDir = realpath(m_confDir, buff);
     if(confDir=="") {
       if(mkdir(m_confDir, 0700)) {
-        cout << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
+        cerr << "ERROR: couldn't create conf dir " << m_confDir << " err: " << errno << endl;
         return false;
       }
     }
@@ -100,7 +101,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     wxString logDir = realpath(m_logDir, buff);
     if(logDir.Trim()=="") {
       if(mkdir(m_logDir, 0700)) {
-        cout << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
+        cerr << "ERROR: couldn't create log dir " << m_logDir << " err: " << errno << endl;
         return false;
       }
     }
@@ -109,13 +110,15 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     m_logDir = realpath(".", buff);
   }
 
+  CBaseWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("forward"));
   CBaseWorkerThread::m_bStartDstarRepeater = parser.Found(wxT("startrptr"));
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
+  CBaseWorkerThread::m_dstarRepeaterCallSign.MakeUpper();
 
   parser.Found(wxT("rcfg"), &CBaseWorkerThread::m_dstarRepeaterConfigFile);
   CBaseWorkerThread::m_dstarRepeaterConfigFile = realpath(CBaseWorkerThread::m_dstarRepeaterConfigFile, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterConfigFile, F_OK ) == -1 ) {
-    cout << "ERROR: dstarrepeater configuration file does not exist" << endl;
+    cerr << "ERROR: dstarrepeater configuration file does not exist" << endl;
     return false;
   }
 
@@ -127,7 +130,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
   CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterExe, F_OK ) == -1 ) {
-    cout << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
+    cerr << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
     return false;
   }
   
@@ -140,11 +143,11 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
      tmpM.Mid(2).ToLong(&l);
      m_portNumber[i-1] = l;
      if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
-       cout << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
+       cerr << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
        return false;
      }
      if(l < 20000U) {
-       cout << wxString::Format(wxT("ERROR: port number %d for mod%d is incorrect (ex. -mod%d A,20011)"), l, i, i) << endl;
+       cerr << wxString::Format(wxT("ERROR: port number %d for mod%d is incorrect (ex. -mod%d A,20011)"), l, i, i) << endl;
        return false;
      }
   }
@@ -153,7 +156,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   if(m_module[0]==m_module[1] || 
      m_module[1]==m_module[2] ||
      m_module[2]==m_module[0]) {
-    cout << "ERROR: module ids (mod1,mod2) must be unique" << endl;
+    cerr << "ERROR: module ids (mod1,mod2) must be unique" << endl;
     return false;
   }
 
@@ -205,7 +208,7 @@ bool CRepeaterConnectorApp::OnInit() {
       m_threads.Add(pThread);
     }
   } catch(MyException* ex) {
-    cout << wxString::Format(wxT("ERROR: Failed to initialize worker thread %c, ex: %s"), m_module[i], ex->GetMessage()) << endl;
+    cerr << wxString::Format(wxT("ERROR: Failed to initialize worker thread %c, ex: %s"), m_module[i], ex->GetMessage()) << endl;
     delete ex;
     return false;
   }
