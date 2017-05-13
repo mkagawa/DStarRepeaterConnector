@@ -173,6 +173,83 @@ const unsigned char GMSK_END[] = { 0x55, 0x55, 0x55, 0x55, 0xC8, 0x7A, 0x00, 0x0
 
 //------------------
 static const wxString DStarRepeaterConfNames[] =  {
+  wxT("dvmegaPort"),
+  wxT("dvmegaPower"), //100
+  wxT("dvmegaRXFrequency"), //1
+  wxT("dvmegaRXInvert"), //0
+  wxT("dvmegaTXDelay"), //150
+  wxT("dvmegaTXFrequency"), //1
+  wxT("dvmegaTXInvert"), //0
+  wxT("dvmegaVariant"), //0
+  wxT("dvrptr1Channel"), //0
+  wxT("dvrptr1ModLevel"), //20
+  wxT("dvrptr1Port"),
+  wxT("dvrptr1RXInvert"), //0
+  wxT("dvrptr1TXDelay"), //150
+  wxT("dvrptr1TXInvert"), //0
+  wxT("dvrptr2Address"), //127.0.0.1
+  wxT("dvrptr2Connection"), //0
+  wxT("dvrptr2ModLevel"), //20
+  wxT("dvrptr2Port"), //0
+  wxT("dvrptr2TXDelay"), //150
+  wxT("dvrptr2TXInvert"), //0
+  wxT("dvrptr2USBPort"),
+  wxT("dvrptr3Address"), //127.0.0.1
+  wxT("dvrptr3Connection"), //0
+  wxT("dvrptr3ModLevel"), //20
+  wxT("dvrptr3Port"), //0
+  wxT("dvrptr3TXDelay"), //150
+  wxT("dvrptr3TXInvert"), //0
+  wxT("dvrptr3USBPort"),
+  wxT("gmskAddress"), //768
+  wxT("mmdvmPTTInvert"), //0
+  wxT("mmdvmPort"),
+  wxT("mmdvmRXInvert"), //0
+  wxT("mmdvmRXLevel"), //100
+  wxT("mmdvmTXDelay"), //50
+  wxT("mmdvmTXInvert"), //0
+  wxT("mmdvmTXLevel"), //100
+  wxT("soundCardRXDevice"),
+  wxT("soundCardRXInvert"), //0
+  wxT("soundCardRXLevel"), //1.0000
+  wxT("soundCardTXDelay"), //150
+  wxT("soundCardTXDevice"),
+  wxT("soundCardTXInvert"), //0
+  wxT("soundCardTXLevel"), //1.0000
+  wxT("soundCardTXTail"), //50
+  wxT("splitLocalAddress"),
+  wxT("splitLocalPort"), //0
+  wxT("splitRXName0"),
+  wxT("splitRXName10"),
+  wxT("splitRXName11"),
+  wxT("splitRXName12"),
+  wxT("splitRXName13"),
+  wxT("splitRXName14"),
+  wxT("splitRXName15"),
+  wxT("splitRXName16"),
+  wxT("splitRXName17"),
+  wxT("splitRXName18"),
+  wxT("splitRXName19"),
+  wxT("splitRXName1"),
+  wxT("splitRXName20"),
+  wxT("splitRXName21"),
+  wxT("splitRXName22"),
+  wxT("splitRXName23"),
+  wxT("splitRXName24"),
+  wxT("splitRXName2"),
+  wxT("splitRXName3"),
+  wxT("splitRXName4"),
+  wxT("splitRXName5"),
+  wxT("splitRXName6"),
+  wxT("splitRXName7"),
+  wxT("splitRXName8"),
+  wxT("splitRXName9"),
+  wxT("splitTXName0"),
+  wxT("splitTXName1"),
+  wxT("splitTXName2"),
+  wxT("splitTXName3"),
+  wxT("splitTXName4"),
+  wxT("splitTimeout"), //0
   wxT("callsign"),
   wxT("gateway"),
   wxT("mode"),

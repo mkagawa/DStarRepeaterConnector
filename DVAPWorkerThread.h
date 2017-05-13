@@ -37,6 +37,7 @@ class CDVAPWorkerThread : public CBaseWorkerThread {
   private:
     int ProcessData();
     wxLongLong m_lastStatusSentTimeStamp;
+    wxLongLong m_lastAckTimeStamp;
     bool m_bStarted;
 };
 

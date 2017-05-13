@@ -101,6 +101,13 @@ int CDVAPWorkerThread::ProcessData() {
   size_t len = ::read(m_fd, m_buffer, DVAP_HEADER_LENGTH);
   if(len == -1) {
     if(errno == EAGAIN) {
+      if(m_bStarted && wxGetUTCTimeMillis() - m_lastAckTimeStamp > 3000) {
+        m_bTx = false;
+        m_bStarted = false;
+        wxLogMessage("No ack from the host. may be repeater process stopped.");
+        return -1;
+      }
+
       //serial buffer empty
       if(!m_bStarted) {
         return 0;
@@ -110,6 +117,7 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogError(wxT("serial read error, err: %d"), errno);
     return 0; //error
   }
+
 
   //data must be more than 2 bytes
   if(len < 2) {
@@ -143,6 +151,7 @@ int CDVAPWorkerThread::ProcessData() {
 
   if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
     wxLogInfo(wxT("DVAP_ACK"));
+    m_lastAckTimeStamp = wxGetUTCTimeMillis();
     return 1; 
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {
@@ -201,7 +210,9 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogInfo(wxT("DVAP_REQ_START"));
     ::memcpy(m_wbuffer,DVAP_RESP_START,DVAP_RESP_START_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
+    m_lastAckTimeStamp = wxGetUTCTimeMillis();
     m_bStarted = true;
+    m_bTx = false;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_STOP,DVAP_REQ_STOP_LEN)==0) {
@@ -209,6 +220,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
     m_bStarted = false;
+    m_bTx = false;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQLIMITS,DVAP_REQ_FREQLIMITS_LEN)==0) {
@@ -249,9 +261,8 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
-    wxLogMessage(wxT("cur:%s"),m_curCallSign);
-    wxLogMessage(wxT("nod:%s"),m_myNodeCallSign);
-    if(!m_curCallSign.StartsWith(" ") && m_curCallSign.CmpNoCase(m_myNodeCallSign) != 0) {
+    wxLogMessage(wxT("cur:%s,node:%s"),m_curCallSign,m_myNodeCallSign);
+    if(!m_curCallSign.StartsWith(" ") && m_curCallSign.CmpNoCase(m_myNodeCallSign.Left(7)) != 0) {
       SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     } else {
       wxLogMessage("this message is sent by repeater. won't be forwarded");

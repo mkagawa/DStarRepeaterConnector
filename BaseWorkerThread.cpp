@@ -64,13 +64,13 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     }
     bool ret;
     var = ""; 
-    if(str==wxT("networkName") || 
-       str==wxT("gatewayAddress") || 
-       str==wxT("localAddress") ) {
-      ret = config2->Write(str,wxT("0.0.0.0"));
-    
+    if(str==wxT("localAddress") ||
+       str==wxT("networkName") || 
+       str==wxT("gatewayAddress")) {
+      ret = config2->Write(str,wxT("127.0.0.1"));
     } else if(str==wxT("announcementTime") || 
        str==wxT("beaconTime") || 
+       str==wxT("controlEnabled") || 
        str==wxT("rpt1Validation") || 
        str==wxT("dtmfBlanking") || 
        str==wxT("errorReply") || 
@@ -81,8 +81,16 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
        str==wxT("output4") || 
        str==wxT("windowX") || 
        str==wxT("windowY") || 
+       str==wxT("announcementEnabled") || 
+       str==wxT("language") || 
+       str==wxT("beaconVoice") || 
        str==wxT("restriction")) {
       ret = config2->Write(str,wxT("0"));
+    } else if(str==wxT("dvapPower") ||
+       str==wxT("logging") ||
+       str==wxT("ack") ||
+       str==wxT("mode")) {
+      ret = config2->Write(str,wxT("1"));
     } else if(str==wxT("gatewayPort")) {
       ret = config2->Write(str,wxT("20010"));
     } else if(str==wxT("gateway")) {
@@ -108,9 +116,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     } else if(str==wxT("dvapPort")) {
       ret = config2->Write(str,m_devName);
     } else if(str==wxT("dvapFrequency")) {
-      ret = config2->Write(str,wxT("145990000"));
-    } else if(str==wxT("dvapPower")) {
-      ret = config2->Write(str,wxT("1"));
+      ret = config2->Write(str,wxT("145500000"));
     } else if(str==wxT("dvapSquelch")) {
       ret = config2->Write(str,wxT("-99"));
     } else {
@@ -162,9 +168,11 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
   ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   while(!TestDestroy()){
     if(ProcessData()==0) {
-      wxMilliSleep(40);
+      wxMilliSleep(20);
     }
-    wxMilliSleep(3);
+    wxMilliSleep(5);
+    ::memset(m_buffer, 0, 10);
+    m_buffer[1] = 0;
   }
 
   return static_cast<ExitCode>(0);
