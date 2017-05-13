@@ -261,8 +261,10 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
-    wxLogMessage(wxT("cur:%s,node:%s"),m_curCallSign,m_myNodeCallSign);
-    if(!m_curCallSign.StartsWith(" ") && m_curCallSign.CmpNoCase(m_myNodeCallSign.Left(7)) != 0) {
+    wxLogMessage(wxT("cur:%s, node:%s"),m_curCallSign,m_myNodeCallSign);
+    wxString tempCS = m_myNodeCallSign.Left(7);
+    wxString tempCS2= m_curCallSign.Left(7);
+    if(!m_curCallSign.StartsWith(" ") && tempCS2.CmpNoCase(tempCS) != 0) {
       SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     } else {
       wxLogMessage("this message is sent by repeater. won't be forwarded");
