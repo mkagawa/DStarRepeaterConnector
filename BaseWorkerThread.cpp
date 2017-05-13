@@ -54,25 +54,37 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   }
   wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
 
-  //Config file
-  wxString str,var;
-  long  dummy;
-  wxString localConfigFile = wxString::Format(wxT("%s/dstarrepeater"), m_rConfDir);
-  wxLogMessage("localConfig=%s", localConfigFile);
-  wxConfigBase *config = new wxFileConfig("","","",
-        CBaseWorkerThread::m_dstarRepeaterConfigFile, wxCONFIG_USE_GLOBAL_FILE);
-  wxConfigBase *config2 = new wxFileConfig("","",
-        localConfigFile, "", wxCONFIG_USE_LOCAL_FILE);
-  bool bCont = config->GetFirstEntry(str, dummy);
-  while ( bCont ) {
-    //aNames.Add(str);
-    bCont = config->GetNextEntry(str, dummy);
+  wxString str,var,localConfigFile = wxString::Format(wxT("%s/dstarrepeater"), m_rConfDir);
+  wxLogInfo("localConfigFile=%s", localConfigFile);
+  wxConfigBase *config2 = new wxFileConfig("","", localConfigFile, "", wxCONFIG_USE_LOCAL_FILE);
+  for(int i=0;;i++) {
+    str = DStarRepeaterConfNames[i];
+    if(str == "") {
+      break;
+    }
     bool ret;
-    config->Read(str,&var);
-    if(str==wxT("announcementTime")) {
-      ret = config2->Write(str,"0");
-    } else if(str==wxT("beaconTime")) {
-      ret = config2->Write(str,"0");
+    var = ""; 
+    if(str==wxT("networkName") || 
+       str==wxT("gatewayAddress") || 
+       str==wxT("localAddress") ) {
+      ret = config2->Write(str,wxT("0.0.0.0"));
+    
+    } else if(str==wxT("announcementTime") || 
+       str==wxT("beaconTime") || 
+       str==wxT("rpt1Validation") || 
+       str==wxT("dtmfBlanking") || 
+       str==wxT("errorReply") || 
+       str==wxT("pttInvert") || 
+       str==wxT("output1") || 
+       str==wxT("output2") || 
+       str==wxT("output3") || 
+       str==wxT("output4") || 
+       str==wxT("windowX") || 
+       str==wxT("windowY") || 
+       str==wxT("restriction")) {
+      ret = config2->Write(str,wxT("0"));
+    } else if(str==wxT("gatewayPort")) {
+      ret = config2->Write(str,wxT("20010"));
     } else if(str==wxT("gateway")) {
       var = wxString::Format(wxT("%-7s%c"), m_dstarRepeaterCallSign, 'G');
       ret = config2->Write(str,var);
@@ -81,6 +93,14 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
       var = wxString::Format(wxT("%-7s%c"), m_dstarRepeaterCallSign, m_siteId);
       ret = config2->Write(str,var);
       m_myNodeCallSign = var;
+    } else if(str==wxT("serialConfig")) {
+      ret = config2->Write(str,wxT("1"));
+    } else if(str==wxT("activeHangTime")) {
+      ret = config2->Write(str,wxT("45"));
+    } else if(str==wxT("ackTime")) {
+      ret = config2->Write(str,wxT("500"));
+    } else if(str==wxT("timeout")) {
+      ret = config2->Write(str,wxT("180"));
     } else if(str==wxT("modemType")) {
       ret = config2->Write(str,wxT("DVAP"));
     } else if(str==wxT("localPort")) {
@@ -91,21 +111,12 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
       ret = config2->Write(str,wxT("145990000"));
     } else if(str==wxT("dvapPower")) {
       ret = config2->Write(str,wxT("1"));
-    } else if(str==wxT("dvapPower")) {
-      ret = config2->Write(str,wxT("1"));
-    } else if(str.StartsWith("mmdvm")) {
-      ret = config2->Write(str,wxT(""));
-    } else if(str.StartsWith("dvrptr")) {
-      ret = config2->Write(str,wxT(""));
-    } else if(str.StartsWith("dvmega")) {
-      ret = config2->Write(str,wxT(""));
     } else if(str==wxT("dvapSquelch")) {
       ret = config2->Write(str,wxT("-99"));
     } else {
-      ret = config2->Write(str,var);
+      ret = config2->Write(str,wxT(""));
     }
   }
-  delete config;
   delete config2;
 
   m_dstarRepeaterCmdLine = m_dstarRepeaterExe + " -logdir:" + m_rLogDir + " -confdir:" + m_rConfDir;
@@ -241,9 +252,9 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
   wxLogInfo(wxT("%5s: %s"), header, dump);
 }
 
-wxString CBaseWorkerThread::m_dstarRepeaterConfigFile = "";
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
 bool CBaseWorkerThread::m_bEnableForwardPackets = false;
+

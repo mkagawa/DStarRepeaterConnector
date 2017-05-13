@@ -41,7 +41,7 @@ enum InstType {
 };
 
 WX_DEFINE_ARRAY_PTR(wxThread*, wxArrayThread);
-
+WX_DECLARE_STRING_HASH_MAP( wxString, repeaterConfigMapType);
 
 class MyException : public std::exception {
   public:
@@ -91,8 +91,6 @@ class CBaseWorkerThread : public wxThread {
     static long m_dstarGatewayPort;
     static bool m_bStartDstarRepeater;
     static bool m_bEnableForwardPackets;
-
-    static wxString m_dstarRepeaterConfigFile;
 
   private:
     InstType m_type;
