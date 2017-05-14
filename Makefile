@@ -9,7 +9,7 @@ LDLIBS = -g -lutil -pthread $(shell wx-config --libs --debug)
 
 all: repeaterconnector
 
-repeaterconnector: DVMegaWorkerThread.o DVAPWorkerThread.o BaseWorkerThread.o RepeaterConnector.o DVAPWorkerThread.h BaseWorkerThread.h RepeaterConnector.h
+repeaterconnector: DVMegaWorkerThread.o DVAPWorkerThread.o BaseWorkerThread.o TxData.o RepeaterConnector.o DVAPWorkerThread.h BaseWorkerThread.h RepeaterConnector.h
 	$(LINK.cpp) $^ $(LDLIBS) -o $@
 
 
