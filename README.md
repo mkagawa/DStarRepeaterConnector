@@ -7,7 +7,7 @@ It may causing a messing up of whole D-Star network, not only your local network
 
 ## Disclaimer
 
-  Copyright (C) 2017 by Masahito Kagawa NW6UP <mkagawa@hotmail.com>
+  Copyright (C) 2017 by Masahito Kagawa
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
