@@ -59,7 +59,7 @@ int CDVAPWorkerThread::ProcessData() {
     }
 
     if(m_bStarted && !m_bTx && !bClosingPacket) {
-      wxLogMessage("TX ON");
+      wxLogMessage("DVAP_RESP_PTT TX ON");
       m_bTx = true;
       ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
       m_wbuffer[4] = 1;
@@ -80,10 +80,10 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
     m_wbuffer[4] = 1;
     ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+    wxLogMessage("DVAP_RESP_PTT TX OFF");
     m_bTx = false;
     m_curCallSign.Clear();
     m_curSessionId = 0L;
-    wxLogMessage("TX OFF");
   }
 
   //Send current status to the host in every 100ms
