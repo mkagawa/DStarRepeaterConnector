@@ -5,7 +5,7 @@ This program is supposed to use to connect two DstarRepeater instances.
 Configure your environment with special attention, not to create any packet loop.
 It may causing a messing up of whole D-Star network, not only your local network.
 
-## how this program works
+## How this program works
 
 this program runs only linux environment. The program simulates DVAP dongle,
 by creating virtual serial port.
@@ -13,7 +13,7 @@ This program automatically start two dstarrepeater with appropriate configuratio
 the progran can be terminated by pressing Ctrl-C or send SIGTERM signal. dstarrepeater
 processes will be terminated as well.
 
-## how to setup
+## How to setup
 Here is the steps to setup
 1. Prepare G4KLX's ircddbgateway - dstarrepeater setup in single linux box.
 2. Configure your ircddbgateway appropriately. Setup two modules (say A and B) for this connector.
