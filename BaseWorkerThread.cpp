@@ -195,11 +195,11 @@ void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
   }
 }
 
-void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, bool bClosing) {
+void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, packetType ptype) {
   //TODO add locking
   //TODO CCITT check sum here
   for(int i = 0; i < m_threads.GetCount(); i++) {
-    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign, m_curSessionId, bClosing));
+    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign, m_curSessionId, ptype));
   }
 }
 

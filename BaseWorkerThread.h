@@ -84,7 +84,7 @@ class CBaseWorkerThread : public wxThread {
     wxString m_rConfDir; //for dstarrepeater
 
   protected: 
-    void SendToInstance(unsigned char* data, size_t len, bool);
+    void SendToInstance(unsigned char* data, size_t len, packetType);
     // thread execution starts here
     virtual void *Entry();
     virtual int ProcessData() = 0;
@@ -109,7 +109,6 @@ class CBaseWorkerThread : public wxThread {
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTxToHost = false; // DVAP->Host Stream
     uint m_packetCnt;
-    
 
     wxMessageQueue<CTxData *> m_SendingQueue;
 

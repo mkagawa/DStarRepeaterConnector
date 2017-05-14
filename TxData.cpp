@@ -17,10 +17,10 @@
 
 #include "TxData.h"
 
-CTxData::CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, bool bClosingPacket)
+CTxData::CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, packetType ptype)
       : m_myCallSign(cs),
         m_sessionId(sessionId),
-        m_bClosingPacket(bClosingPacket) {
+        m_packetType(ptype) {
   m_buffer.Clear();
   m_buffer.AppendData(data, data_len);
   m_myCallSign = cs;

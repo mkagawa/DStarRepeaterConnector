@@ -52,13 +52,15 @@ int CDVAPWorkerThread::ProcessData() {
 
     //Write to the host
     if(m_bEnableForwardPackets && m_bTxToHost) {
-      m_packetCnt++;
-      ::write(m_fd, data, data_len);
+      if(!pBuf->IsHeaderPacket()) {
+        m_packetCnt++;
+      }
       if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
         wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
                                          wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
         dumper(head, data, data_len);
       }
+      ::write(m_fd, data, data_len);
     }
 
     delete pBuf;
@@ -149,7 +151,7 @@ int CDVAPWorkerThread::ProcessData() {
       if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
         bClosingPacket = true; 
       }
-      SendToInstance(m_buffer, len, bClosingPacket);
+      SendToInstance(m_buffer, len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
       if(diff > 1) {
         wxLogMessage(wxT("Serial diff: %d"), diff);
       }
@@ -204,7 +206,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
-    SendToInstance(m_wbuffer, DVAP_HEADER_LEN, false);
+    SendToInstance(m_wbuffer, DVAP_HEADER_LEN, packetType::HEADER);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {

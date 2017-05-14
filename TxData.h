@@ -24,6 +24,12 @@
 #include <wx/buffer.h> 
 #include <wx/time.h> 
 
+enum packetType {
+  NONE,
+  HEADER,
+  CLOSING,
+} ;
+
 //
 //Data structure used to exchange GMSK data between threads
 //
@@ -33,14 +39,15 @@ class CTxData {
     wxString m_myCallSign;
     ulong m_sessionId;
     wxLongLong m_lastPacketTimeStamp;
-    bool m_bClosingPacket;
+    packetType m_packetType;
   public:
-    bool IsClosingPacket() { return m_bClosingPacket; }
+    bool IsHeaderPacket() { return m_packetType == packetType::HEADER; }
+    bool IsClosingPacket() { return m_packetType == packetType::CLOSING; }
     ulong GetSessionId() { return m_sessionId; }
     wxString GetCallSign() { return m_myCallSign; }
     unsigned char* GetData() { return (unsigned char*)m_buffer.GetData(); }
     size_t GetDataLen() { return m_buffer.GetDataLen(); }
-    CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, bool);
+    CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, packetType);
     ~CTxData();
 };
 
