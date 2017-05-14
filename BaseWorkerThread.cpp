@@ -52,6 +52,17 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   if(m_devName == "") {
     throw new MyException(wxString::Format(wxT("Virtual device name wasn't assigned by system. need to reboot the machine?")));
   }
+
+  struct termios options;
+  tcgetattr(m_fd, &options);
+  cfsetispeed(&options, B230400);
+  cfsetospeed(&options, B230400);
+  tcsetattr(m_fd, TCSANOW, &options);
+
+  //set non-blocking
+  int flags = ::fcntl(m_fd, F_GETFL, 0);
+  ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
+
   wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
 
   wxString str,var,localConfigFile = wxString::Format(wxT("%s/dstarrepeater"), m_rConfDir);
@@ -125,15 +136,22 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   }
   delete config2;
 
-  m_dstarRepeaterCmdLine = m_dstarRepeaterExe + " -logdir:" + m_rLogDir + " -confdir:" + m_rConfDir;
-
   if(m_myGatewayCallSign == "") {
     throw new MyException(wxString::Format(wxT("Gateway CallSign is not set in config file %s"),"B"));
   }
   if(m_myNodeCallSign == "") {
     throw new MyException(wxString::Format(wxT("Repeater CallSign is not set in config file %s"),"A"));
   }
-
+  wxString dstarRepeaterCmdLine = m_dstarRepeaterExe + " -logdir:" + m_rLogDir + " -confdir:" + m_rConfDir;
+  if(wxLog::GetVerbose()) {
+    dstarRepeaterCmdLine += " --verbose";
+  }
+  if(m_bStartDstarRepeater) {
+    wxLogInfo(wxT("Execute: %s"), dstarRepeaterCmdLine);
+    wxExecute(dstarRepeaterCmdLine);
+  } else {
+    wxLogInfo(wxT("run this command manually: %s"), dstarRepeaterCmdLine);
+  }
   m_myNodeCallSign = wxString::Format(wxT("%-7s%c"),m_myNodeCallSign.Mid(0,7), m_siteId);
   wxLogMessage(wxT("Repeater CallSign: %s, Gateway CallSign: %s"), m_myNodeCallSign, m_myGatewayCallSign);
 }
@@ -157,20 +175,12 @@ void CBaseWorkerThread::OnExit() {
 
 CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
   wxLogMessage(wxT("CBaseWorkerThread started (%c)"), m_siteId);
-  if(m_bStartDstarRepeater) {
-    wxLogInfo(wxT("Execute: %s"), m_dstarRepeaterCmdLine);
-    wxExecute(m_dstarRepeaterCmdLine);
-  } else {
-    wxLogInfo(wxT("run this command manually: %s"), m_dstarRepeaterCmdLine);
-  }
 
-  int flags = ::fcntl(m_fd, F_GETFL, 0);
-  ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
   while(!TestDestroy()){
     if(ProcessData()==0) {
-      wxMilliSleep(20);
+      wxMilliSleep(10);
     }
-    wxMilliSleep(5);
+    wxMilliSleep(1);
     ::memset(m_buffer, 0, 10);
     ::memset(m_wbuffer, 0, 10);
   }
@@ -185,11 +195,11 @@ void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
   }
 }
 
-void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len) {
+void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, bool bClosing) {
   //TODO add locking
   //TODO CCITT check sum here
   for(int i = 0; i < m_threads.GetCount(); i++) {
-    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign, m_curSessionId));
+    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.push(new CTxData(data, len, m_curCallSign, m_curSessionId, bClosing));
   }
 }
 
@@ -265,4 +275,5 @@ wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
 bool CBaseWorkerThread::m_bEnableForwardPackets = false;
+bool CBaseWorkerThread::m_bEnableDumpPackets = false;
 

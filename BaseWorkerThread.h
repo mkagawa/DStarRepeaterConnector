@@ -32,6 +32,7 @@
 #include <wx/time.h> 
 
 #include "Const.h"
+#include "TxData.h"
 
 #include <pty.h>
 
@@ -56,31 +57,6 @@ class MyException : public std::exception {
 };
 
 
-//
-//Data structure used to exchange GMSK data between threads
-//
-class CTxData {
-  private:
-    wxMemoryBuffer m_buffer;
-    wxString m_myCallSign;
-    ulong m_sessionId;
-    wxLongLong m_lastPacketTimeStamp;
-  public:
-    ulong GetSessionId() { return m_sessionId; }
-    wxString GetCallSign() { return m_myCallSign; }
-    unsigned char* GetData() { return (unsigned char*)m_buffer.GetData(); }
-    size_t GetDataLen() { return m_buffer.GetDataLen(); }
-    CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId)
-      : m_myCallSign(cs), m_sessionId(sessionId) {
-      m_buffer.Clear();
-      m_buffer.AppendData(data, data_len);
-      m_myCallSign = cs;
-    }
-    ~CTxData() {
-      m_buffer.Clear();
-    }
-};
-
 class CBaseWorkerThread : public wxThread {
   public:
     CBaseWorkerThread(char,unsigned int,wxString,wxString);
@@ -95,6 +71,7 @@ class CBaseWorkerThread : public wxThread {
     static long m_dstarGatewayPort;
     static bool m_bStartDstarRepeater;
     static bool m_bEnableForwardPackets;
+    static bool m_bEnableDumpPackets;
 
   private:
     InstType m_type;
@@ -105,10 +82,9 @@ class CBaseWorkerThread : public wxThread {
 
     wxString m_rLogDir; //for dstarrepeater
     wxString m_rConfDir; //for dstarrepeater
-    wxString m_dstarRepeaterCmdLine;
 
   protected: 
-    void SendToInstance(unsigned char* data, size_t len);
+    void SendToInstance(unsigned char* data, size_t len, bool);
     // thread execution starts here
     virtual void *Entry();
     virtual int ProcessData() = 0;
@@ -133,7 +109,8 @@ class CBaseWorkerThread : public wxThread {
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTx = false;
 
-    wxMessageQueue<CTxData *> m_SendingQueue;
+    std::queue<CTxData *> m_SendingQueue;
+    //wxMessageQueue<CTxData *> m_SendingQueue;
 
     //inticats ready to receive packet
     bool m_initialized = false;

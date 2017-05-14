@@ -24,7 +24,6 @@
 #include "DVAPWorkerThread.h"
 #include "Const.h"
 
-
 CDVAPWorkerThread::~CDVAPWorkerThread()
 {
 }
@@ -37,22 +36,16 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
 }
 
 int CDVAPWorkerThread::ProcessData() {
-  //wxLogMessage(wxT("%d ProcessData"), m_fd);
-
-  //Check receiving queue
   CTxData *pBuf;
   bool bClosingPacket = false;
-  if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
+  if(!m_SendingQueue.empty()) {
+    pBuf = m_SendingQueue.front();
+    bClosingPacket = pBuf->IsClosingPacket();
     auto data = pBuf->GetData();
     auto data_len = pBuf->GetDataLen();
     m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
 
-    //Detect closing packet pattern
-    if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,data,2) == 0 && ::memcmp(GMSK_END, &data[6], 6) == 0) {
-      bClosingPacket = true; 
-    }
-
-    if(wxLog::GetVerbose()) {
+    if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
       wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
                                        wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
       dumper(head, data, data_len);
@@ -70,7 +63,10 @@ int CDVAPWorkerThread::ProcessData() {
     if(m_bEnableForwardPackets) {
       ::write(m_fd, data, data_len);
     }
+
+    m_SendingQueue.pop();
     delete pBuf;
+    return 1;
   }
 
   //watch dog for TX.
@@ -121,7 +117,6 @@ int CDVAPWorkerThread::ProcessData() {
     return 0; //error
   }
 
-
   //data must be more than 2 bytes
   if(len < 2) {
     return -1;
@@ -148,10 +143,73 @@ int CDVAPWorkerThread::ProcessData() {
     size_t temp_len = ::read(m_fd, &m_buffer[len], data_len - len);
     if(temp_len > 0) {
       len += temp_len;
+      m_lastReceivedFromHostTimeStamp = wxGetUTCTimeMillis();
     }
   }
 
-  if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
+  if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
+    int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
+    if(m_curSessionId != 0 && (diff == 1 || diff == -255)) {
+      m_packetSerialNo = m_buffer[5];
+
+      //Detect closing packet pattern
+      bool bClosingPacket = false;
+      if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
+        bClosingPacket = true; 
+      }
+      SendToInstance(m_buffer, len, bClosingPacket);
+      if(diff > 1) {
+        wxLogMessage(wxT("Serial diff: %d"), diff);
+      }
+    }
+    return 1;
+
+  } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
+    ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
+    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+
+    //For logging purpose
+    wxString cs,r1,r2,my,sx;
+    char buffer[9];
+    buffer[8] = 0;
+    ::memcpy(buffer, &m_buffer[9],  8); r2 = wxString::FromAscii(buffer);
+    ::memcpy(buffer, &m_buffer[17], 8); r1 = wxString::FromAscii(buffer);
+    ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
+    ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
+    ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
+    wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+
+    //Store my local dstar repeater info
+    m_curCallSign = my;
+    m_curSuffix= sx;
+    m_curSessionId = (ulong)rand();
+    if(m_curSessionId==0) {
+      m_curSessionId = (ulong)rand();
+    }
+    m_packetSerialNo = 0;
+
+    //write back to the host
+    m_wbuffer[1] = 0x60;
+    ::write(m_fd, m_wbuffer, DVAP_RESP_HEADER_LEN);
+
+    //check if sender callsign is not myNode call sign
+    if(!m_curCallSign.StartsWith(" ") && ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)!=0) {
+      //restore the seoncd byte
+      m_wbuffer[1] = 0xa0;
+      //empty G1/G2 value, and force CQCQCQ to To field
+      ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
+      ::memcpy(&m_wbuffer[9],  "                ", 16);
+      CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+
+      SendToInstance(m_wbuffer, DVAP_HEADER_LEN, false);
+    } else {
+      wxLogMessage("this message is sent by repeater. won't be forwarded");
+      m_curSessionId = 0;
+    }
+    return 1;
+
+  } else if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
     wxLogInfo(wxT("DVAP_ACK"));
     m_lastAckTimeStamp = wxGetUTCTimeMillis();
     return 1; 
@@ -235,58 +293,6 @@ int CDVAPWorkerThread::ProcessData() {
     ::write(m_fd, m_wbuffer, DVAP_RESP_FREQLIMITS_LEN+8);
     return 1;
 
-  } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
-    ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
-    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-
-    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-    //See DVAP specification doc
-    m_wbuffer[1] = 0x60;
-
-    //For logging purpose
-    wxString cs,r1,r2,my,sx;
-    char buffer[9];
-    buffer[8] = 0;
-    ::memcpy(buffer, &m_buffer[9],  8); r2 = wxString::FromAscii(buffer);
-    ::memcpy(buffer, &m_buffer[17], 8); r1 = wxString::FromAscii(buffer);
-    ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
-    ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
-    ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
-    wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
-
-    //Store my local dstar repeater info
-    m_curCallSign = my;
-    m_curSuffix= sx;
-    m_curSessionId = (ulong)rand();
-    if(m_curSessionId==0) {
-      m_curSessionId = (ulong)rand();
-    }
-    m_packetSerialNo = 0;
-
-    //empty G1/G2 value, and force CQCQCQ to To field
-    ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
-    ::memcpy(&m_wbuffer[9],  "                ", 16);
-    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-
-    //wxLogMessage(wxT("cur:%s, node:%s"),m_curCallSign,m_myNodeCallSign);
-    if(!m_curCallSign.StartsWith(" ") && ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)!=0) {
-      SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
-    } else {
-      wxLogMessage("this message is sent by repeater. won't be forwarded");
-      m_curSessionId = 0;
-    }
-    return 1;
-
-  } else if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
-    int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
-    if(m_curSessionId != 0 && (diff == 1 || diff == -255)) {
-      m_packetSerialNo = m_buffer[5];
-      SendToInstance(m_buffer, len);
-      if(diff > 1) {
-        wxLogMessage(wxT("Serial diff: %d"), diff);
-      }
-    }
-    return 1;
 
   } else {
     dumper("Other", m_buffer, len);

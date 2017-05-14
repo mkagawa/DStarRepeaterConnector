@@ -21,7 +21,6 @@
 #include <signal.h>
 #include <stdlib.h>
 
-
 using namespace std;
 
 wxIMPLEMENT_APP(CRepeaterConnectorApp);
@@ -57,7 +56,8 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddOption(wxT("confdir"), wxEmptyString, wxT("config file directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddOption(wxT("logdir"), wxEmptyString, wxT("log directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   parser.AddSwitch(wxT("startrptr"), wxEmptyString, wxT("start dstarrepeater"), wxCMD_LINE_PARAM_OPTIONAL);
-  parser.AddSwitch(wxT("forward"), wxEmptyString, wxT("enables forewarding packet in each repeaters"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("tx"), wxEmptyString, wxT("enables forewarding packet in each repeaters"), wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddSwitch(wxT("dump"), wxEmptyString, wxT("dump packets in log file with --verbose"), wxCMD_LINE_PARAM_OPTIONAL);
   wxAppConsole::OnInitCmdLine(parser);
 }	
 
@@ -109,7 +109,8 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
     m_logDir = realpath(".", buff);
   }
 
-  CBaseWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("forward"));
+  CBaseWorkerThread::m_bEnableDumpPackets = parser.Found(wxT("dump"));
+  CBaseWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("tx"));
   CBaseWorkerThread::m_bStartDstarRepeater = parser.Found(wxT("startrptr"));
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
   CBaseWorkerThread::m_dstarRepeaterCallSign.MakeUpper();
@@ -120,28 +121,26 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
   CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
-  CBaseWorkerThread::m_dstarRepeaterExe = realpath(CBaseWorkerThread::m_dstarRepeaterExe, buff);
   if( access( CBaseWorkerThread::m_dstarRepeaterExe, F_OK ) == -1 ) {
     cerr << "ERROR: dstarrepeater executable does not exist, or no permission to access" << endl;
     return false;
   }
-  
 
   wxString tmpM, tmpP;
   long l;
   for(int i=1;i<=MAX_MODULES;i++) {
-     parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
-     m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
-     tmpM.Mid(2).ToLong(&l);
-     m_portNumber[i-1] = l;
-     if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
-       cerr << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
-       return false;
-     }
-     if(l < 20000U) {
-       cerr << wxString::Format(wxT("ERROR: port number %d for mod%d is incorrect (ex. -mod%d A,20011)"), l, i, i) << endl;
-       return false;
-     }
+    parser.Found(wxString::Format(wxT("mod%d"),i), &tmpM);
+    m_module[i-1] = (tmpM.MakeUpper().c_str())[0];
+    tmpM.Mid(2).ToLong(&l);
+    m_portNumber[i-1] = l;
+    if(m_module[i-1] < 'A' || m_module[i-1] > 'E') {
+      cerr << wxString::Format(wxT("ERROR: range of mod%d must be A to E"), i) << endl;
+      return false;
+    }
+    if(l < 20000U) {
+      cerr << wxString::Format(wxT("ERROR: port number %d for mod%d is incorrect (ex. -mod%d A,20011)"), l, i, i) << endl;
+      return false;
+    }
   }
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);
@@ -193,7 +192,7 @@ bool CRepeaterConnectorApp::OnInit() {
       if(e != wxThreadError::wxTHREAD_NO_ERROR) {
         delete pThread;
         pThread = NULL;
-        wxLogMessage(wxT("Thread create err: %d"), e);
+        wxLogMessage(wxT("Error in creating thread: %d"), e);
         return false; 
       }
       pThread->SetPriority(100);

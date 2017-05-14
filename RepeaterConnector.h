@@ -1,3 +1,19 @@
+/*
+ *   Masahito Kagawa <mkagawa@hotmail.com> NW6UP
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -25,7 +41,7 @@ WX_DEFINE_ARRAY_PTR(CBaseWorkerThread*, wxArrayBaseWorkerThread);
 
 class CRepeaterConnectorLogFormatter : public wxLogFormatter {
   public:
-  virtual wxString Format(wxLogLevel level,
+    virtual wxString Format(wxLogLevel level,
                           const wxString& msg,
                           const wxLogRecordInfo& info) const {
     return wxString::Format(wxT("%s [%d][%d]: %s"),
@@ -42,12 +58,12 @@ public:
    virtual bool OnCmdLineParsed(wxCmdLineParser &);
    virtual int OnExit();
    wxArrayBaseWorkerThread m_threads;
-   wxArrayInt m_masterFd;
-   wxArrayInt m_slaveFd;
-
-   wxCriticalSection m_pThreadCS;    // protects the m_pThread pointer
+   
+   //wxCriticalSection m_pThreadCS;    // protects the m_pThread pointer
 
 private:
+   wxArrayInt m_masterFd;
+   wxArrayInt m_slaveFd;
    std::fstream m_logStream;
    static void OnSignal(int sig);
    unsigned char m_module[MAX_MODULES];
