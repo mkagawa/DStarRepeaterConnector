@@ -26,7 +26,8 @@ with modile id with -mod1 and -mod2 parameter which are matching with ircddbgate
 
 ## Other configuration parameters
 <pre>
-Usage: repeaterconnector [-v] -callsign &lt;str> [-gwport &lt;num>] -mod1 &lt;str> -mod2 &lt;str> -rptcmd &lt;str> [-confdir &lt;str>] [-logdir &lt;str>] [-startrptr] [-tx] [-dump] [-h] [--verbose]
+Usage: repeaterconnector [-v] -callsign &lt;str> [-gwport &lt;num>] -mod1 &lt;str> -mod2 &lt;str>
+      -rptcmd &lt;str> [-confdir &lt;str>] [-logdir &lt;str>] [-startrptr] [-tx] [-dump] [-h] [--verbose]
   -v                    show version
   -callsign:&lt;str>       gw and repeater base callsign without suffix
   -gwport:&lt;num>         gw port number (default:20010)
