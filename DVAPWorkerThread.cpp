@@ -178,7 +178,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0U; sx = wxString::FromAscii(buffer);
-    wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
+    wxLogMessage(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //Store my local dstar repeater info
     m_curCallSign = my;
