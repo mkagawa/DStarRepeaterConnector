@@ -47,7 +47,7 @@ int CDVAPWorkerThread::ProcessData() {
     if(m_bStarted && !m_bTxToHost && !bClosingPacket) {
       wxLogMessage("DVAP -> Host Stream Starts");
       m_bTxToHost = true;
-      m_packetCnt = 0;
+      m_packetCnt = 0U;
     }
 
     //Write to the host
@@ -84,7 +84,7 @@ int CDVAPWorkerThread::ProcessData() {
     //[07][20] [90][00] [00] [00][12] //Transmitting Tx fifo can except up to 18 new packets
     //7f == Indicates Queue is empty and Tx operation will soon terminate.
     m_wbuffer[4] = 0xb5;
-    m_wbuffer[5] = 0x01;
+    m_wbuffer[5] = 0x00;
     m_wbuffer[6] = 0x7f;
     ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
     m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
@@ -97,6 +97,8 @@ int CDVAPWorkerThread::ProcessData() {
       if(m_bStarted && wxGetUTCTimeMillis() - m_lastAckTimeStamp > 3000) {
         m_bTxToHost = false;
         m_bStarted = false;
+        m_packetSerialNo = 0U;
+        m_curSessionId = 0U;
         wxLogMessage("No ack from the host. may be repeater process stopped.");
         return -1;
       }
@@ -158,49 +160,53 @@ int CDVAPWorkerThread::ProcessData() {
     }
     return 1;
 
+  } else if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
+    wxLogInfo(wxT("DVAP_ACK"));
+    m_lastAckTimeStamp = wxGetUTCTimeMillis();
+    return 1; 
+
   } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
     ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
-    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
     //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
     //For logging purpose
     wxString cs,r1,r2,my,sx;
     char buffer[9];
-    buffer[8] = 0;
+    buffer[8] = 0U;
     ::memcpy(buffer, &m_buffer[9],  8); r2 = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[17], 8); r1 = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[33], 8); my = wxString::FromAscii(buffer);
-    ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0; sx = wxString::FromAscii(buffer);
+    ::memcpy(buffer, &m_buffer[41], 4); buffer[4] = 0U; sx = wxString::FromAscii(buffer);
     wxLogInfo(wxT("Headr: to: %s, r2: %s, r1: %s, my: %s/%s"), cs, r2, r1, my, sx);
 
     //Store my local dstar repeater info
     m_curCallSign = my;
     m_curSuffix= sx;
     m_curSessionId = (ulong)rand();
-    if(m_curSessionId==0) {
+    while(m_curSessionId==0) {
       m_curSessionId = (ulong)rand();
     }
-    m_packetSerialNo = 0;
+    m_packetSerialNo = 0U;
 
     //write back to the host
-    m_wbuffer[1] = 0x60;
+    m_wbuffer[1] = 0x60U;
     ::write(m_fd, m_wbuffer, DVAP_RESP_HEADER_LEN);
 
     //check if sender callsign is not myNode call sign
     if(m_curCallSign.StartsWith(" ") || ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)==0) {
       wxLogMessage("this message is sent by repeater. won't be forwarded");
-      m_curSessionId = 0;
+      m_curSessionId = 0U;
       return 1;
     }
     if(cs.EndsWith("L") || cs.EndsWith("U")) {
       wxLogMessage("this message is repeater command. ignoring.");
-      m_curSessionId = 0;
+      m_curSessionId = 0U;
       return 1;
     }
 
     //restore the seoncd byte
-    m_wbuffer[1] = 0xa0;
+    m_wbuffer[1] = 0xa0U;
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_wbuffer[9],  "                ", 16);
@@ -208,11 +214,6 @@ int CDVAPWorkerThread::ProcessData() {
 
     SendToInstance(m_wbuffer, DVAP_HEADER_LEN, packetType::HEADER);
     return 1;
-
-  } else if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
-    wxLogInfo(wxT("DVAP_ACK"));
-    m_lastAckTimeStamp = wxGetUTCTimeMillis();
-    return 1; 
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {
     //treat as reset signal
@@ -226,7 +227,7 @@ int CDVAPWorkerThread::ProcessData() {
   } else if(::memcmp(m_buffer,DVAP_REQ_SERIAL,DVAP_REQ_SERIAL_LEN)==0) {
     wxLogInfo(wxT("DVAP_REQ_SERIAL"));
     ::memcpy(m_wbuffer,DVAP_RESP_SERIAL,DVAP_RESP_SERIAL_LEN);
-    ::memcpy(&m_wbuffer[4], "MT123456", 9); //including 0x00
+    ::memcpy(&m_wbuffer[4], "MK123456", 9); //including 0x00
     ::write(m_fd, m_wbuffer, DVAP_RESP_SERIAL_LEN+8);
     return 1;
 
@@ -286,8 +287,8 @@ int CDVAPWorkerThread::ProcessData() {
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQLIMITS,DVAP_REQ_FREQLIMITS_LEN)==0) {
     wxLogInfo(wxT("DVAP_REQ_FREQLIMITS"));
     ::memcpy(m_wbuffer,DVAP_RESP_FREQLIMITS,DVAP_RESP_FREQLIMITS_LEN);
-    long low = 144000000;
-    long high = 145999999;
+    long low = 144000000L;
+    long high = 145999999L;
     ::memcpy(&m_wbuffer[4], &low, 4);
     ::memcpy(&m_wbuffer[8], &high, 4);
     ::write(m_fd, m_wbuffer, DVAP_RESP_FREQLIMITS_LEN+8);

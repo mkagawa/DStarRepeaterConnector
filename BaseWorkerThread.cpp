@@ -182,7 +182,6 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
     }
     wxMilliSleep(1);
     ::memset(m_buffer, 0, 10);
-    ::memset(m_wbuffer, 0, 10);
   }
 
   return static_cast<ExitCode>(0);
