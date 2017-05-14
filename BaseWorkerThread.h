@@ -109,8 +109,7 @@ class CBaseWorkerThread : public wxThread {
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTx = false;
 
-    std::queue<CTxData *> m_SendingQueue;
-    //wxMessageQueue<CTxData *> m_SendingQueue;
+    wxMessageQueue<CTxData *> m_SendingQueue;
 
     //inticats ready to receive packet
     bool m_initialized = false;

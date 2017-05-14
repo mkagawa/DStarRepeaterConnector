@@ -38,8 +38,7 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
 int CDVAPWorkerThread::ProcessData() {
   CTxData *pBuf;
   bool bClosingPacket = false;
-  if(!m_SendingQueue.empty()) {
-    pBuf = m_SendingQueue.front();
+  if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
     bClosingPacket = pBuf->IsClosingPacket();
     auto data = pBuf->GetData();
     auto data_len = pBuf->GetDataLen();
@@ -64,7 +63,6 @@ int CDVAPWorkerThread::ProcessData() {
       ::write(m_fd, data, data_len);
     }
 
-    m_SendingQueue.pop();
     delete pBuf;
     return 1;
   }
@@ -83,7 +81,7 @@ int CDVAPWorkerThread::ProcessData() {
   }
 
   //Send current status to the host in every 100ms
-  if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 100) {
+  if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 20) {
     ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
     //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
     //[07][20] [90][00] [9C] [00][7F] //-100dBm squelch closed
@@ -93,6 +91,7 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[5] = 0x01;
     m_wbuffer[6] = 0x7f;
     ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
+    wxLogInfo("Status sent");
     m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
   }
 
