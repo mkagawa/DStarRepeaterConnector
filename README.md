@@ -51,6 +51,18 @@ start it, by checking repeaterconnector.log file.
    -logdir ./logs -confdir ./conf --verbose -startrptr -tx
 </pre>
 
+## linking to the reflectors
+
+to link the reflectors from each dstarrepeater instance, recommend to use remotecontrold command
+or other remote control programs. Here is the command line example of remotecontrold.
+
+<pre>
+Link module A to REF008-D
+/usr/local/bin/remotecontrold "KK6JA  A" link never "REF008 D"
+
+Unlink module A
+/usr/local/bin/remotecontrold "KK6JA  A" unlink
+</pre>
 
 ## Other configuration parameters
 <pre>
@@ -70,3 +82,4 @@ Usage: repeaterconnector [-v] -callsign &lt;str> [-gwport &lt;num>] -mod1 &lt;st
   -h, --help            show this help message
   --verbose             generate verbose log messages
 </pre>
+
