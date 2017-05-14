@@ -21,10 +21,17 @@ Here is the steps to setup
    - Address = 127.0.0.1
    - Port = 20011 for A, 20012 for B (use whatever appropriate port number for this)
    - Reflector = empty / Startup = No / Reconnect = Never (you can eventually change this)
-3. create your own start.sh file by copying original start.sh. Change callsign field and port number
+3. Create your own start.sh file by copying original start.sh. Change callsign field and port number
 with modile id with -mod1 and -mod2 parameter which are matching with ircddbgateway's configuration.
 specify dstarrepater binary path (full path is recommended, ex. -rptcmd /usr/local/sbin/dstarrepeater)
--logdir, -confdir must be writable by user which runs this program.
+-logdir, -confdir must be writable by user which runs this program. 
+If you don't specify -startrptr (start dstarrepeater), the program won't start dstarrepeater. You can manually
+start it, by checking repeaterconnector.log file.
+4. Here is an example of command line.
+<pre>
+./repeaterconnector -callsign KK6JA -mod1 A,20013 -mod2 E,20014 -rptcmd /usr/local/sbin/dstarrepeaterd -logdir:./logs -confdir ./conf --verbose -startrptr -tx
+</pre>
+
 
 ## Other configuration parameters
 <pre>
