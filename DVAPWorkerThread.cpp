@@ -44,43 +44,37 @@ int CDVAPWorkerThread::ProcessData() {
     auto data_len = pBuf->GetDataLen();
     m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
 
-    if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
-      wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
-                                       wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
-      dumper(head, data, data_len);
-    }
-
-    if(m_bStarted && !m_bTx && !bClosingPacket) {
-      wxLogMessage("DVAP_RESP_PTT TX ON");
-      m_bTx = true;
-      ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
-      m_wbuffer[4] = 1;
-      ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
+    if(m_bStarted && !m_bTxToHost && !bClosingPacket) {
+      wxLogMessage("DVAP -> Host Stream Starts");
+      m_bTxToHost = true;
+      m_packetCnt = 0;
     }
 
     //Write to the host
-    if(m_bEnableForwardPackets) {
+    if(m_bEnableForwardPackets && m_bTxToHost) {
+      m_packetCnt++;
       ::write(m_fd, data, data_len);
+      if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
+        wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
+                                         wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
+        dumper(head, data, data_len);
+      }
     }
 
     delete pBuf;
-    return 1;
   }
 
   //watch dog for TX.
   //if current time is more than 1 sec from previous TX packet 
   //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTx && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 1000)) {
-    ::memcpy(m_wbuffer,DVAP_RESP_PTT,DVAP_RESP_PTT_LEN);
-    m_wbuffer[4] = 1;
-    ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
-    wxLogMessage("DVAP_RESP_PTT TX OFF");
-    m_bTx = false;
+  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 1000)) {
+    wxLogMessage(wxT("DVAP -> Host Stream Ends (%d packets sent)"), m_packetCnt);
+    m_bTxToHost = false;
     m_curCallSign.Clear();
     m_curSessionId = 0L;
   }
 
-  //Send current status to the host in every 100ms
+  //Send current status to the host in every 20ms
   if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 20) {
     ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
     //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
@@ -91,7 +85,6 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[5] = 0x01;
     m_wbuffer[6] = 0x7f;
     ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
-    wxLogInfo("Status sent");
     m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
   }
 
@@ -100,7 +93,7 @@ int CDVAPWorkerThread::ProcessData() {
   if(len == -1) {
     if(errno == EAGAIN) {
       if(m_bStarted && wxGetUTCTimeMillis() - m_lastAckTimeStamp > 3000) {
-        m_bTx = false;
+        m_bTxToHost = false;
         m_bStarted = false;
         wxLogMessage("No ack from the host. may be repeater process stopped.");
         return -1;
@@ -146,7 +139,7 @@ int CDVAPWorkerThread::ProcessData() {
     }
   }
 
-  if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
+  if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
     if(m_curSessionId != 0 && (diff == 1 || diff == -255)) {
       m_packetSerialNo = m_buffer[5];
@@ -218,7 +211,7 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogInfo(wxT("DVAP_REQ_NAME"));
     ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
-    m_bTx = false;
+    m_bTxToHost = false;
     m_bStarted = false;
     return 1;
  
@@ -271,7 +264,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
     m_lastAckTimeStamp = wxGetUTCTimeMillis();
     m_bStarted = true;
-    m_bTx = false;
+    m_bTxToHost = false;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_STOP,DVAP_REQ_STOP_LEN)==0) {
@@ -279,7 +272,7 @@ int CDVAPWorkerThread::ProcessData() {
     ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
     ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
     m_bStarted = false;
-    m_bTx = false;
+    m_bTxToHost = false;
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_FREQLIMITS,DVAP_REQ_FREQLIMITS_LEN)==0) {

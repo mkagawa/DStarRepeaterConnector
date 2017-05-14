@@ -107,7 +107,9 @@ class CBaseWorkerThread : public wxThread {
 
     wxLongLong m_lastTxPacketTimeStamp;
     wxLongLong m_lastReceivedFromHostTimeStamp;
-    bool m_bTx = false;
+    bool m_bTxToHost = false; // DVAP->Host Stream
+    uint m_packetCnt;
+    
 
     wxMessageQueue<CTxData *> m_SendingQueue;
 

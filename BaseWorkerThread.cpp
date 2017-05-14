@@ -39,7 +39,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     m_rLogDir(logDir),
     m_rConfDir(confDir),
     m_portNumber(portNumber),
-    m_bTx(false)
+    m_bTxToHost(false)
 {
   mkdir(confDir, 0700);
   mkdir(logDir, 0700);
