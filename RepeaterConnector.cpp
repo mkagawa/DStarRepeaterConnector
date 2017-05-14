@@ -1,5 +1,5 @@
 /*
- *   Masahito Kagawa <mkagawa@hotmail.com> NW6UP
+ *  Copyright (C) 2017 by Masahito Kagawa NW6UP <mkagawa@hotmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
