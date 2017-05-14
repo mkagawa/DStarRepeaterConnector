@@ -30,7 +30,7 @@ start it, by checking repeaterconnector.log file.
 4. Here is an example of command line.
 <pre>
 ./repeaterconnector -callsign KK6JA -mod1 A,20013 -mod2 E,20014 -rptcmd /usr/local/sbin/dstarrepeaterd
-   -logdir:./logs -confdir ./conf --verbose -startrptr -tx
+   -logdir ./logs -confdir ./conf --verbose -startrptr -tx
 </pre>
 
 
