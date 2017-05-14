@@ -23,6 +23,8 @@ Here is the steps to setup
    - Reflector = empty / Startup = No / Reconnect = Never (you can eventually change this)
 3. create your own start.sh file by copying original start.sh. Change callsign field and port number
 with modile id with -mod1 and -mod2 parameter which are matching with ircddbgateway's configuration.
+specify dstarrepater binary path (full path is recommended, ex. -rptcmd /usr/local/sbin/dstarrepeater)
+-logdir, -confdir must be writable by user which runs this program.
 
 ## Other configuration parameters
 <pre>
