@@ -57,11 +57,13 @@ to link the reflectors from each dstarrepeater instance, recommend to use remote
 or other remote control programs. Here is the command line example of remotecontrold.
 
 <pre>
+must execute from the same machine as ircddbgateway
+
 Link module A to REF008-D
-/usr/local/bin/remotecontrold "KK6JA  A" link never "REF008 D"
+$ /usr/local/bin/remotecontrold "KK6JA  A" link never "REF008 D"
 
 Unlink module A
-/usr/local/bin/remotecontrold "KK6JA  A" unlink
+$ /usr/local/bin/remotecontrold "KK6JA  A" unlink
 </pre>
 
 ## Other configuration parameters
