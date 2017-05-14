@@ -172,7 +172,7 @@ CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
     }
     wxMilliSleep(5);
     ::memset(m_buffer, 0, 10);
-    m_buffer[1] = 0;
+    ::memset(m_wbuffer, 0, 10);
   }
 
   return static_cast<ExitCode>(0);
@@ -189,7 +189,7 @@ void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len) {
   //TODO add locking
   //TODO CCITT check sum here
   for(int i = 0; i < m_threads.GetCount(); i++) {
-    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign));
+    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign, m_curSessionId));
   }
 }
 

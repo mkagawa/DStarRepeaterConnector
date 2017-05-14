@@ -36,7 +36,6 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
 {
 }
 
-
 int CDVAPWorkerThread::ProcessData() {
   //wxLogMessage(wxT("%d ProcessData"), m_fd);
 
@@ -54,7 +53,9 @@ int CDVAPWorkerThread::ProcessData() {
     }
 
     if(wxLog::GetVerbose()) {
-      dumper(bClosingPacket ? "CLOSE" : "REMOT", data, data_len);
+      wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
+                                       wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
+      dumper(head, data, data_len);
     }
 
     if(m_bStarted && !m_bTx && !bClosingPacket) {
@@ -80,6 +81,8 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[4] = 1;
     ::write(m_fd, m_wbuffer, DVAP_RESP_PTT_LEN);
     m_bTx = false;
+    m_curCallSign.Clear();
+    m_curSessionId = 0L;
     wxLogMessage("TX OFF");
   }
 
@@ -142,7 +145,6 @@ int CDVAPWorkerThread::ProcessData() {
       wxLogMessage("Host data timeout");
       return -1;
     }
-    wxMilliSleep(2);
     size_t temp_len = ::read(m_fd, &m_buffer[len], data_len - len);
     if(temp_len > 0) {
       len += temp_len;
@@ -244,7 +246,7 @@ int CDVAPWorkerThread::ProcessData() {
     //For logging purpose
     wxString cs,r1,r2,my,sx;
     char buffer[9];
-    buffer[9] = 0;
+    buffer[8] = 0;
     ::memcpy(buffer, &m_buffer[9],  8); r2 = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[17], 8); r1 = wxString::FromAscii(buffer);
     ::memcpy(buffer, &m_buffer[25], 8); cs = wxString::FromAscii(buffer);
@@ -255,24 +257,35 @@ int CDVAPWorkerThread::ProcessData() {
     //Store my local dstar repeater info
     m_curCallSign = my;
     m_curSuffix= sx;
+    m_curSessionId = (ulong)rand();
+    if(m_curSessionId==0) {
+      m_curSessionId = (ulong)rand();
+    }
+    m_packetSerialNo = 0;
 
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
 
-    wxLogMessage(wxT("cur:%s, node:%s"),m_curCallSign,m_myNodeCallSign);
-    wxString tempCS = m_myNodeCallSign.Left(7);
-    wxString tempCS2= m_curCallSign.Left(7);
-    if(!m_curCallSign.StartsWith(" ") && tempCS2.CmpNoCase(tempCS) != 0) {
+    //wxLogMessage(wxT("cur:%s, node:%s"),m_curCallSign,m_myNodeCallSign);
+    if(!m_curCallSign.StartsWith(" ") && ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)!=0) {
       SendToInstance(m_wbuffer, DVAP_HEADER_LEN);
     } else {
       wxLogMessage("this message is sent by repeater. won't be forwarded");
+      m_curSessionId = 0;
     }
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_GMSK_DATA,2)==0) {
-    SendToInstance(m_buffer, len);
+    int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
+    if(m_curSessionId != 0 && (diff == 1 || diff == -255)) {
+      m_packetSerialNo = m_buffer[5];
+      SendToInstance(m_buffer, len);
+      if(diff > 1) {
+        wxLogMessage(wxT("Serial diff: %d"), diff);
+      }
+    }
     return 1;
 
   } else {

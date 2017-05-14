@@ -63,14 +63,18 @@ class CTxData {
   private:
     wxMemoryBuffer m_buffer;
     wxString m_myCallSign;
+    ulong m_sessionId;
+    wxLongLong m_lastPacketTimeStamp;
   public:
+    ulong GetSessionId() { return m_sessionId; }
     wxString GetCallSign() { return m_myCallSign; }
     unsigned char* GetData() { return (unsigned char*)m_buffer.GetData(); }
     size_t GetDataLen() { return m_buffer.GetDataLen(); }
-    CTxData(unsigned char* data, size_t data_len, wxString cs) {
+    CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId)
+      : m_myCallSign(cs), m_sessionId(sessionId) {
       m_buffer.Clear();
       m_buffer.AppendData(data, data_len);
-      m_myCallSign = cs; 
+      m_myCallSign = cs;
     }
     ~CTxData() {
       m_buffer.Clear();
@@ -119,6 +123,8 @@ class CBaseWorkerThread : public wxThread {
     wxString m_myGatewayCallSign;
     wxString m_curCallSign;
     wxString m_curSuffix;
+    unsigned char m_packetSerialNo;
+    ulong m_curSessionId;
 
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;
