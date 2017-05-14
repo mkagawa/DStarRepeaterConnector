@@ -186,19 +186,25 @@ int CDVAPWorkerThread::ProcessData() {
     ::write(m_fd, m_wbuffer, DVAP_RESP_HEADER_LEN);
 
     //check if sender callsign is not myNode call sign
-    if(!m_curCallSign.StartsWith(" ") && ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)!=0) {
-      //restore the seoncd byte
-      m_wbuffer[1] = 0xa0;
-      //empty G1/G2 value, and force CQCQCQ to To field
-      ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
-      ::memcpy(&m_wbuffer[9],  "                ", 16);
-      CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-
-      SendToInstance(m_wbuffer, DVAP_HEADER_LEN, false);
-    } else {
+    if(m_curCallSign.StartsWith(" ") || ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)==0) {
       wxLogMessage("this message is sent by repeater. won't be forwarded");
       m_curSessionId = 0;
+      return 1;
     }
+    if(cs.EndsWith("L") || cs.EndsWith("U")) {
+      wxLogMessage("this message is repeater command. ignoring.");
+      m_curSessionId = 0;
+      return 1;
+    }
+
+    //restore the seoncd byte
+    m_wbuffer[1] = 0xa0;
+    //empty G1/G2 value, and force CQCQCQ to To field
+    ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
+    ::memcpy(&m_wbuffer[9],  "                ", 16);
+    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+
+    SendToInstance(m_wbuffer, DVAP_HEADER_LEN, false);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_ACK,DVAP_ACK_LEN)==0) {
