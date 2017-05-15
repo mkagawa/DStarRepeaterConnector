@@ -77,8 +77,8 @@ int CDVAPWorkerThread::ProcessData() {
     m_curSessionId = 0L;
   }
 
-  //Send current status to the host in every 20ms
-  if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 20) {
+  //Send current status to the host in every 250ms (at least)
+  if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 250) {
     ::memcpy(m_wbuffer,DVAP_STATUS,DVAP_STATUS_LEN);
     //[07][20] [90][00] [B5] [01][7F] //-75dBm squelch open
     //[07][20] [90][00] [9C] [00][7F] //-100dBm squelch closed
@@ -142,10 +142,15 @@ int CDVAPWorkerThread::ProcessData() {
     }
   }
 
+  m_lastStatusSentTimeStamp = 0UL;
+  return _ProcessMessage(data_len);
+}
+
+int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
     if(m_curSessionId != 0) {
-      if(diff == 1 || diff == -255) {
+      if(diff <= 1 || diff == -255) {
         m_packetSerialNo = m_buffer[5];
 
         //Detect closing packet pattern
@@ -153,7 +158,7 @@ int CDVAPWorkerThread::ProcessData() {
         if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
           bClosingPacket = true; 
         }
-        SendToInstance(m_buffer, len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
+        SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
         if(diff > 1) {
           wxLogMessage(wxT("Serial diff: %d"), diff);
         }
@@ -297,9 +302,8 @@ int CDVAPWorkerThread::ProcessData() {
     ::write(m_fd, m_wbuffer, DVAP_RESP_FREQLIMITS_LEN+8);
     return 1;
 
-
   } else {
-    dumper("Other", m_buffer, len);
+    dumper("Other", m_buffer, data_len);
     return 1;
 
   }
