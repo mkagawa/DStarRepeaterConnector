@@ -31,6 +31,10 @@ This program automatically start two dstarrepeater with appropriate configuratio
 the progran can be terminated by pressing Ctrl-C or send SIGTERM signal. dstarrepeater
 processes will be terminated as well.
 
+Note that Gateway / Repeater callsign must be different from user's callsign.
+Any D-Star packets from same callsign as the repeater callsign won't be forwarded
+to the other repeater.
+
 ## How to setup
 Here is the steps to setup
 1. Prepare G4KLX's ircddbgateway - dstarrepeater setup in single linux box.
@@ -51,7 +55,7 @@ start it, by checking repeaterconnector.log file.
    -logdir ./logs -confdir ./conf --verbose -startrptr -tx
 </pre>
 
-## linking to the reflectors
+## Linking to the reflectors
 
 to link the reflectors from each dstarrepeater instance, recommend to use remotecontrold command
 or other remote control programs. Here is the command line example of remotecontrold.
