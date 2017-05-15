@@ -31,7 +31,7 @@
 using namespace std;
 class CDVAPWorkerThread : public CBaseWorkerThread {
   public:
-    CDVAPWorkerThread(char siteId, unsigned int,wxString,wxString);
+    CDVAPWorkerThread(char siteId, unsigned int,wxString);
     ~CDVAPWorkerThread();
 
   private:

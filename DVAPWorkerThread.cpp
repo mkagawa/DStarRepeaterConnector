@@ -28,8 +28,8 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 {
 }
 
-CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxString confDir,wxString logDir)
- :CBaseWorkerThread(siteId, portNumber, confDir, logDir),
+CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxString appName)
+ :CBaseWorkerThread(siteId, portNumber, appName),
   m_bStarted(false),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
@@ -73,6 +73,7 @@ int CDVAPWorkerThread::ProcessData() {
     wxLogMessage(wxT("DVAP -> Host Stream Ends (%d packets sent)"), m_packetCnt);
     m_bTxToHost = false;
     m_curCallSign.Clear();
+    m_curSuffix.Clear();
     m_curSessionId = 0L;
   }
 
@@ -104,9 +105,6 @@ int CDVAPWorkerThread::ProcessData() {
       }
 
       //serial buffer empty
-      if(!m_bStarted) {
-        return 0;
-      }
       return 0;
     }
     wxLogError(wxT("serial read error, err: %d"), errno);
@@ -115,6 +113,7 @@ int CDVAPWorkerThread::ProcessData() {
 
   //data must be more than 2 bytes
   if(len < 2) {
+    wxLogError(wxT("serial read got 1 byte"));
     return -1;
   }
 
@@ -145,17 +144,21 @@ int CDVAPWorkerThread::ProcessData() {
 
   if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
-    if(m_curSessionId != 0 && (diff == 1 || diff == -255)) {
-      m_packetSerialNo = m_buffer[5];
+    if(m_curSessionId != 0) {
+      if(diff == 1 || diff == -255) {
+        m_packetSerialNo = m_buffer[5];
 
-      //Detect closing packet pattern
-      bool bClosingPacket = false;
-      if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
-        bClosingPacket = true; 
-      }
-      SendToInstance(m_buffer, len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
-      if(diff > 1) {
-        wxLogMessage(wxT("Serial diff: %d"), diff);
+        //Detect closing packet pattern
+        bool bClosingPacket = false;
+        if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
+          bClosingPacket = true; 
+        }
+        SendToInstance(m_buffer, len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
+        if(diff > 1) {
+          wxLogMessage(wxT("Serial diff: %d"), diff);
+        }
+      } else {
+        wxLogMessage(wxT("Packet out of order"));
       }
     }
     return 1;

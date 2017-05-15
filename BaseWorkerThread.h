@@ -59,11 +59,11 @@ class MyException : public std::exception {
 
 class CBaseWorkerThread : public wxThread {
   public:
-    CBaseWorkerThread(char,unsigned int,wxString,wxString);
+    CBaseWorkerThread(char,unsigned int,wxString);
     virtual ~CBaseWorkerThread() = 0;
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
 
-    static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber, wxString confDir, wxString logDir);
+    static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber, wxString appName);
 
     //public static property
     static wxString m_dstarRepeaterExe;
@@ -72,6 +72,8 @@ class CBaseWorkerThread : public wxThread {
     static bool m_bStartDstarRepeater;
     static bool m_bEnableForwardPackets;
     static bool m_bEnableDumpPackets;
+    static wxString m_rConfDir;
+    static wxString m_rLogDir;
 
   private:
     InstType m_type;
@@ -80,8 +82,7 @@ class CBaseWorkerThread : public wxThread {
     wxArrayThread m_threads;
     char m_siteId;
 
-    wxString m_rLogDir; //for dstarrepeater
-    wxString m_rConfDir; //for dstarrepeater
+    wxString m_rAppName; //for dstarrepeater
 
   protected: 
     void SendToInstance(unsigned char* data, size_t len, packetType);

@@ -86,9 +86,9 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
         return false;
       }
     }
-    m_confDir = realpath(m_confDir, buff);
+    CBaseWorkerThread::m_rConfDir = realpath(m_confDir, buff);
   } else {
-    m_confDir = realpath(".", buff);
+    CBaseWorkerThread::m_rConfDir = realpath(".", buff);
   }
   if(parser.Found(wxT("logdir"), &m_logDir)) {
     if(m_logDir.Left(1) != "." && m_logDir.Left(1) != "/") {
@@ -104,9 +104,9 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
         return false;
       }
     }
-    m_logDir = realpath(m_logDir, buff);
+    CBaseWorkerThread::m_rLogDir = realpath(m_logDir, buff);
   } else {
-    m_logDir = realpath(".", buff);
+    CBaseWorkerThread::m_rLogDir = realpath(".", buff);
   }
 
   CBaseWorkerThread::m_bEnableDumpPackets = parser.Found(wxT("dump"));
@@ -185,9 +185,8 @@ bool CRepeaterConnectorApp::OnInit() {
   int i;
   try {
     for(i = 0; i < MAX_MODULES; i++) {
-      wxString logDir = wxString::Format(wxT("%s/log%c"), m_logDir, m_module[i]);
-      wxString confDir = wxString::Format(wxT("%s/conf%c"), m_confDir, m_module[i]);
-      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i], confDir, logDir);
+      wxString rAppName = wxString::Format(wxT("%s_%c"), CBaseWorkerThread::m_dstarRepeaterCallSign, m_module[i]);
+      auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i], rAppName);
       wxThreadError e = pThread->Create();
       if(e != wxThreadError::wxTHREAD_NO_ERROR) {
         delete pThread;
