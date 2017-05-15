@@ -38,29 +38,46 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
 int CDVAPWorkerThread::ProcessData() {
   CTxData *pBuf;
   bool bClosingPacket = false;
-  if(m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
+  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > 500 && 
+     m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
+
     bClosingPacket = pBuf->IsClosingPacket();
-    auto data = pBuf->GetData();
-    auto data_len = pBuf->GetDataLen();
-    m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
+    if(m_curTxSessionId == 0) {
+      m_curTxSessionId = pBuf->GetSessionId();
+    } 
 
-    if(m_bStarted && !m_bTxToHost && !bClosingPacket) {
-      wxLogMessage("DVAP -> Host Stream Starts");
-      m_bTxToHost = true;
-      m_packetCnt = 0U;
-    }
-
-    //Write to the host
-    if(m_bEnableForwardPackets && m_bTxToHost) {
-      if(!pBuf->IsHeaderPacket()) {
-        m_packetCnt++;
+    if(m_curTxSessionId != pBuf->GetSessionId()) {
+      wxLogMessage(wxT("wrong session id"));
+    } else {
+      auto data = pBuf->GetData();
+      auto data_len = pBuf->GetDataLen();
+      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
+      if(pBuf->IsHeaderPacket()) {
+        //Save header packet
+        m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
+        m_pHeaderPacket = new wxMemoryBuffer();
+        m_pHeaderPacket->AppendData(data, data_len);
+        m_bTxToHost = true;
+      } else {
+        //Write to the host
+        if(m_bEnableForwardPackets && m_bTxToHost) {
+          if(m_pHeaderPacket) {
+            wxLogMessage("DVAP -> Host Stream Starts");
+            m_packetCnt = 0U;
+            //write header first
+            ::write(m_fd, m_pHeaderPacket->GetData(), m_pHeaderPacket->GetDataLen());
+            delete m_pHeaderPacket;
+            m_pHeaderPacket = NULL;
+          }
+          m_packetCnt++;
+          if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
+            wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
+                                             wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
+            dumper(head, data, data_len);
+          }
+          ::write(m_fd, data, data_len);
+        }
       }
-      if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
-        wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
-                                         wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
-        dumper(head, data, data_len);
-      }
-      ::write(m_fd, data, data_len);
     }
 
     delete pBuf;
@@ -69,12 +86,17 @@ int CDVAPWorkerThread::ProcessData() {
   //watch dog for TX.
   //if current time is more than 1 sec from previous TX packet 
   //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 1000)) {
+  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 500)) {
     wxLogMessage(wxT("DVAP -> Host Stream Ends (%d packets sent)"), m_packetCnt);
     m_bTxToHost = false;
     m_curCallSign.Clear();
     m_curSuffix.Clear();
-    m_curSessionId = 0L;
+    m_curTxSessionId = 0L;
+    m_lastTxPacketTimeStamp = 0L;
+    m_lastHeaderPacketTimeStamp = 0L;
+    if(m_pHeaderPacket) {
+      delete m_pHeaderPacket;
+    }
   }
 
   //Send current status to the host in every 250ms (at least)
@@ -99,7 +121,7 @@ int CDVAPWorkerThread::ProcessData() {
         m_bTxToHost = false;
         m_bStarted = false;
         m_packetSerialNo = 0U;
-        m_curSessionId = 0U;
+        m_curRxSessionId = 0U;
         wxLogMessage("No ack from the host. may be repeater process stopped.");
         return -1;
       }
@@ -149,7 +171,7 @@ int CDVAPWorkerThread::ProcessData() {
 int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
-    if(m_curSessionId != 0) {
+    if(m_curRxSessionId != 0) {
       if(diff <= 1 || diff == -255) {
         m_packetSerialNo = m_buffer[5];
 
@@ -191,9 +213,9 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     //Store my local dstar repeater info
     m_curCallSign = my;
     m_curSuffix= sx;
-    m_curSessionId = (ulong)rand();
-    while(m_curSessionId==0) {
-      m_curSessionId = (ulong)rand();
+    m_curRxSessionId = (ulong)rand();
+    while(m_curRxSessionId==0) {
+      m_curRxSessionId = (ulong)rand();
     }
     m_packetSerialNo = 0U;
 
@@ -204,12 +226,12 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     //check if sender callsign is not myNode call sign
     if(m_curCallSign.StartsWith(" ") || ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)==0) {
       wxLogMessage("this message is sent by repeater. won't be forwarded");
-      m_curSessionId = 0U;
+      m_curRxSessionId = 0U;
       return 1;
     }
     if(cs.EndsWith("L") || cs.EndsWith("U")) {
       wxLogMessage("this message is repeater command. ignoring.");
-      m_curSessionId = 0U;
+      m_curRxSessionId = 0U;
       return 1;
     }
 

@@ -101,11 +101,14 @@ class CBaseWorkerThread : public wxThread {
     wxString m_curCallSign;
     wxString m_curSuffix;
     unsigned char m_packetSerialNo;
-    ulong m_curSessionId;
+    ulong m_curRxSessionId;
+    ulong m_curTxSessionId;
 
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;
 
+    wxMemoryBuffer* m_pHeaderPacket;
+    wxLongLong m_lastHeaderPacketTimeStamp;
     wxLongLong m_lastTxPacketTimeStamp;
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTxToHost = false; // DVAP->Host Stream

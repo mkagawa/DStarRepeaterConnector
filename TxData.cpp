@@ -23,7 +23,6 @@ CTxData::CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessio
         m_packetType(ptype) {
   m_buffer.Clear();
   m_buffer.AppendData(data, data_len);
-  m_myCallSign = cs;
 }
 
 CTxData::~CTxData() {
