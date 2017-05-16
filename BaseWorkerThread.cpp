@@ -73,10 +73,12 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     }
     bool ret;
     var = ""; 
-    if(str==wxT("localAddress") ||
-       str==wxT("networkName") || 
-       str==wxT("gatewayAddress")) {
+    if(str==wxT("localAddress")) {
+      ret = config->Write(str,wxT("0.0.0.0"));
+    } else if(str==wxT("networkName")) {
       ret = config->Write(str,wxT("127.0.0.1"));
+    } else if(str==wxT("gatewayAddress")) {
+      ret = config->Write(str,m_dstarGatewayAddr);
     } else if(str==wxT("announcementTime") || 
        str==wxT("beaconTime") || 
        str==wxT("controlEnabled") || 
@@ -272,6 +274,7 @@ wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 wxString CBaseWorkerThread::m_rConfDir = "";
 wxString CBaseWorkerThread::m_rLogDir = "";
+wxString CBaseWorkerThread::m_dstarGatewayAddr = "127.0.0.1";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
 bool CBaseWorkerThread::m_bEnableForwardPackets = false;

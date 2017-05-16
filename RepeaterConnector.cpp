@@ -48,6 +48,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   }
   parser.AddOption(wxT("callsign"), wxEmptyString, wxT("gw and repeater base callsign without suffix"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   parser.AddOption(wxT("gwport"), wxEmptyString, wxT("gw port number (default:20010)"), wxCMD_LINE_VAL_NUMBER, wxCMD_LINE_PARAM_OPTIONAL);
+  parser.AddOption(wxT("gwaddr"), wxEmptyString, wxT("gw ip addr (default:127.0.0.1)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   for(int i=1;i<=MAX_MODULES;i++) {
     parser.AddOption(wxString::Format(wxT("mod%d"),i), wxEmptyString,
       wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod%d:A,20011)"),i,i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
@@ -117,6 +118,9 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
 
   if(!parser.Found("gwport", &CBaseWorkerThread::m_dstarGatewayPort)) {
     CBaseWorkerThread::m_dstarGatewayPort = 20010;
+  }
+  if(!parser.Found("gwaddr", &CBaseWorkerThread::m_dstarGatewayAddr)) {
+    CBaseWorkerThread::m_dstarGatewayAddr = "127.0.0.1";
   }
 
   parser.Found("rptcmd", &CBaseWorkerThread::m_dstarRepeaterExe);

@@ -34,6 +34,7 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
   m_bStarted(false),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
+  srand(time(NULL));
 }
 
 int CDVAPWorkerThread::ProcessData() {
@@ -174,22 +175,24 @@ int CDVAPWorkerThread::ProcessData() {
 int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
+    //Detect closing packet pattern
+    bool bClosingPacket = false;
+    if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
+      bClosingPacket = true;
+    }
+
     if(m_curRxSessionId != 0) {
       if(diff <= 1 || diff == -255) {
         m_packetSerialNo = m_buffer[5];
-
-        //Detect closing packet pattern
-        bool bClosingPacket = false;
-        if(data_len > 12 && ::memcmp(DVAP_GMSK_DATA,m_buffer,2) == 0 && ::memcmp(GMSK_END, &m_buffer[6], 6) == 0) {
-          bClosingPacket = true; 
-        }
-        SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
-        if(diff > 1) {
-          wxLogMessage(wxT("Serial diff: %d"), diff);
-        }
       } else {
-        wxLogMessage(wxT("Packet out of order"));
+        //just log it and go forward
+        wxLogMessage(wxT("the packet is out of order, diff:%d"), diff);
       }
+      SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
+    }
+
+    if(bClosingPacket) {
+      m_curRxSessionId = 0;
     }
     return 1;
 
@@ -236,6 +239,11 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     }
     if(cs.EndsWith("L") || cs == wxT("U       ")) {
       wxLogMessage("This message is repeater command. ignoring.");
+      m_curRxSessionId = 0U;
+      return 1;
+    }
+    if(m_curTxSessionId != 0) {
+      wxLogMessage("other side is being sent. ignoring.");
       m_curRxSessionId = 0U;
       return 1;
     }
