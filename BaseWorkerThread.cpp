@@ -36,6 +36,9 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
     m_rAppName(appName),
+    m_curTxSessionId(0),
+    m_curRxSessionId(0),
+    m_lastHeaderPacketTimeStamp(0),
     m_portNumber(portNumber),
     m_bTxToHost(false)
 {

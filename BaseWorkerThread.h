@@ -80,11 +80,11 @@ class CBaseWorkerThread : public wxThread {
     int m_slavefd;
     unsigned int m_portNumber;
     wxArrayThread m_threads;
-    char m_siteId;
 
     wxString m_rAppName; //for dstarrepeater
 
   protected: 
+    char m_siteId;
     void SendToInstance(unsigned char* data, size_t len, packetType);
     // thread execution starts here
     virtual void *Entry();
