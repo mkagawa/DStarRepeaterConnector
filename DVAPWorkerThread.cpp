@@ -230,7 +230,7 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     //check if sender callsign is not myNode call sign
     if(m_curCallSign.StartsWith(" ") || 
        ::memcmp(m_myNodeCallSign.c_str(),m_curCallSign.c_str(),7)==0 && ((char)m_curCallSign[7]==m_siteId ||  sx == "INFO")) {
-      wxLogMessage("this message is sent by repeater. won't be forwarded");
+      wxLogMessage("This message is sent by repeater. won't be forwarded");
       m_curRxSessionId = 0U;
       return 1;
     }
