@@ -120,6 +120,7 @@ class CBaseWorkerThread : public wxThread {
     wxLongLong m_lastTxPacketTimeStamp;
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTxToHost = false; // DVAP->Host Stream
+    bool m_bInvalid;
 
 
     //inticats ready to receive packet

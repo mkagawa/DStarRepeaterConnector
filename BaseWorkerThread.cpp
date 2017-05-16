@@ -41,7 +41,8 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     m_lastHeaderPacketTimeStamp(0),
     m_portNumber(portNumber),
     m_bStarted(false),
-    m_bTxToHost(false)
+    m_bTxToHost(false),
+    m_bInvalid(false)
 {
   char devname[50];
   if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
@@ -286,6 +287,7 @@ void CBaseWorkerThread::ProcessTxToHost() {
       m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
       m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
       m_bTxToHost = true;
+      m_bInvalid = false;
       //Save header packet, will delete later
       m_pTxHeaderPacket = pBuf;
       m_bHeaderSent = false;
@@ -306,12 +308,12 @@ void CBaseWorkerThread::ProcessTxToHost() {
         if(m_bEnableForwardPackets) {
           if(m_pTxHeaderPacket && !m_bHeaderSent) {
             m_bHeaderSent = true;
+            m_iTxPacketCnt = 0U;
             if(m_pTxHeaderPacket->IsNoSend()) {
               wxLogMessage("Connector -> Host Stream (invalid)");
-              m_bTxToHost = false;
+              m_bInvalid = true;
             } else {
               wxLogMessage("Connector -> Host Stream Starts");
-              m_iTxPacketCnt = 0U;
               //write header first
               ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
             }
@@ -324,7 +326,9 @@ void CBaseWorkerThread::ProcessTxToHost() {
                                               pBuf->GetCallSign());
               dumper(head, data, data_len);
             }
-            ::write(m_fd, data, data_len);
+            if(!m_bInvalid) {
+              ::write(m_fd, data, data_len);
+            }
           }
         }
         delete pBuf;
@@ -336,7 +340,7 @@ void CBaseWorkerThread::ProcessTxToHost() {
   //if current time is more than 1 sec from previous TX packet 
   //or packet type is "closing" stop sending
   if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 500)) {
-    wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets sent)"), (int)m_iTxPacketCnt);
+    wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets)"), (int)m_iTxPacketCnt);
     m_bTxToHost = false;
     m_curCallSign.Clear();
     m_curSuffix.Clear();
