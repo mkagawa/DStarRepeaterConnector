@@ -1,3 +1,5 @@
 v0.9.1    2017-05-14     Initial Release
 v0.9.2    2017-05-15     Change timing of sending Status packet to the host
                          (forcibly send status right after sending any packet to the host)
+v0.9.3    2017-06-15     Implements delay forward. wait 500 sec after header received until
+                         forwarding voice packets

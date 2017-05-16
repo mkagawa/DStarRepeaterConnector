@@ -18,7 +18,7 @@
 #ifndef __CONST__
 #define __CONST__
 
-const unsigned char SW_VERSION[] = "0.9.2";
+const unsigned char SW_VERSION[] = "0.9.3";
 const unsigned char SW_VENDOR[] = "NW6UP";
 const unsigned char APPLICATION_NAME[] = "DStarRepeater Connector";
 #define MAX_MODULES 2
