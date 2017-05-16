@@ -41,6 +41,5 @@ class CDVAPWorkerThread : public CBaseWorkerThread {
     int _ProcessMessage(size_t data_len);
     wxLongLong m_lastStatusSentTimeStamp;
     wxLongLong m_lastAckTimeStamp;
-    bool m_bStarted;
 };
 

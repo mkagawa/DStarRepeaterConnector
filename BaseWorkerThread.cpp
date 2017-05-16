@@ -40,6 +40,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     m_curRxSessionId(0),
     m_lastHeaderPacketTimeStamp(0),
     m_portNumber(portNumber),
+    m_bStarted(false),
     m_bTxToHost(false)
 {
   char devname[50];
@@ -95,11 +96,11 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
        str==wxT("announcementEnabled") || 
        str==wxT("language") || 
        str==wxT("beaconVoice") || 
+       str==wxT("logging") ||
+       str==wxT("ack") ||
        str==wxT("restriction")) {
       ret = config->Write(str,wxT("0"));
     } else if(str==wxT("dvapPower") ||
-       str==wxT("logging") ||
-       str==wxT("ack") ||
        str==wxT("mode")) {
       ret = config->Write(str,wxT("1"));
     } else if(str==wxT("gatewayPort")) {
@@ -195,12 +196,16 @@ void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
   }
 }
 
-void CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, packetType ptype) {
+wxArrayCTxData CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, packetType ptype) {
   //TODO add locking
   //TODO CCITT check sum here
+  wxArrayCTxData arr;
   for(int i = 0; i < m_threads.GetCount(); i++) {
-    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(new CTxData(data, len, m_curCallSign, m_curRxSessionId, ptype));
+    CTxData* pTxData = new CTxData(data, len, m_curCallSign, m_curRxSessionId, ptype);
+    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(pTxData);
+    arr.Add(pTxData);
   }
+  return arr;
 }
 
 static const unsigned int crc_table[256] = {
@@ -269,6 +274,82 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
   }
   wxLogInfo(wxT("%5s: %s"), header, dump);
 }
+void CBaseWorkerThread::ProcessTxToHost() {
+  CTxData *pBuf;
+  bool bClosingPacket = false;
+
+  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > 500 && 
+     m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
+
+    if(pBuf->IsHeaderPacket() && m_curTxSessionId == 0) {
+      m_curTxSessionId = pBuf->GetSessionId();
+      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
+      m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
+      m_bTxToHost = true;
+      //Save header packet, will delete later
+      m_pTxHeaderPacket = pBuf;
+      m_bHeaderSent = false;
+
+      wxLogInfo("Header received, SessId: %X", (uint)(pBuf->GetSessionId() % 0xFFFF));
+    } 
+    bClosingPacket = pBuf->IsClosingPacket();
+
+    if(m_curTxSessionId != pBuf->GetSessionId()) {
+      wxLogMessage(wxT("Wrong session id: %4X"),(uint)(pBuf->GetSessionId() % 0xFFFF));
+      delete pBuf;
+    } else {
+      auto data = pBuf->GetData();
+      auto data_len = pBuf->GetDataLen();
+      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
+      if(!pBuf->IsHeaderPacket()) {
+        //Write to the host
+        if(m_bEnableForwardPackets) {
+          if(m_pTxHeaderPacket && !m_bHeaderSent) {
+            m_bHeaderSent = true;
+            if(m_pTxHeaderPacket->IsNoSend()) {
+              wxLogMessage("Connector -> Host Stream (invalid)");
+              m_bTxToHost = false;
+            } else {
+              wxLogMessage("Connector -> Host Stream Starts");
+              m_iTxPacketCnt = 0U;
+              //write header first
+              ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
+            }
+          }
+          if(m_bTxToHost) {
+            m_iTxPacketCnt++;
+            if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
+              wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
+                                             wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),
+                                              pBuf->GetCallSign());
+              dumper(head, data, data_len);
+            }
+            ::write(m_fd, data, data_len);
+          }
+        }
+        delete pBuf;
+      }
+    }
+  }
+
+  //watch dog for TX.
+  //if current time is more than 1 sec from previous TX packet 
+  //or packet type is "closing" stop sending
+  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 500)) {
+    wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets sent)"), (int)m_iTxPacketCnt);
+    m_bTxToHost = false;
+    m_curCallSign.Clear();
+    m_curSuffix.Clear();
+    m_curTxSessionId = 0L;
+    m_lastTxPacketTimeStamp = 0L;
+    m_lastHeaderPacketTimeStamp = 0L;
+    if(m_pTxHeaderPacket) {
+      delete m_pTxHeaderPacket;
+      m_pTxHeaderPacket = NULL;
+    }
+  }
+}
+
 
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";

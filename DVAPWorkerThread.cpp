@@ -30,78 +30,16 @@ CDVAPWorkerThread::~CDVAPWorkerThread()
 
 CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxString appName)
  :CBaseWorkerThread(siteId, portNumber, appName),
-  m_lastAckTimeStamp(0L),
-  m_bStarted(false),
+  m_lastAckTimeStamp(wxGetUTCTimeMillis()),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
   srand(time(NULL));
 }
 
 int CDVAPWorkerThread::ProcessData() {
-  CTxData *pBuf;
-  bool bClosingPacket = false;
-  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > 500 && 
-     m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
 
-    bClosingPacket = pBuf->IsClosingPacket();
-    if(m_curTxSessionId == 0) {
-      m_curTxSessionId = pBuf->GetSessionId();
-    } 
+  ProcessTxToHost();
 
-    if(m_curTxSessionId != pBuf->GetSessionId()) {
-      wxLogMessage(wxT("Wrong session id: %4X"),(uint)(pBuf->GetSessionId() % 0xFFFF));
-    } else {
-      auto data = pBuf->GetData();
-      auto data_len = pBuf->GetDataLen();
-      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
-      if(pBuf->IsHeaderPacket()) {
-        //Save header packet
-        m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
-        m_pHeaderPacket = new wxMemoryBuffer();
-        m_pHeaderPacket->AppendData(data, data_len);
-        m_bTxToHost = true;
-        wxLogInfo("Header received");
-      } else {
-        //Write to the host
-        if(m_bEnableForwardPackets && m_bTxToHost) {
-          if(m_pHeaderPacket) {
-            wxLogMessage("DVAP -> Host Stream Starts");
-            m_packetCnt = 0U;
-            //write header first
-            ::write(m_fd, m_pHeaderPacket->GetData(), m_pHeaderPacket->GetDataLen());
-            delete m_pHeaderPacket;
-            m_pHeaderPacket = NULL;
-          }
-          m_packetCnt++;
-          if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
-            wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
-                                             wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),pBuf->GetCallSign());
-            dumper(head, data, data_len);
-          }
-          ::write(m_fd, data, data_len);
-        }
-      }
-    }
-
-    delete pBuf;
-  }
-
-  //watch dog for TX.
-  //if current time is more than 1 sec from previous TX packet 
-  //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 500)) {
-    wxLogMessage(wxT("DVAP -> Host Stream Ends (%d packets sent)"), m_packetCnt);
-    m_bTxToHost = false;
-    m_curCallSign.Clear();
-    m_curSuffix.Clear();
-    m_curTxSessionId = 0L;
-    m_lastTxPacketTimeStamp = 0L;
-    m_lastHeaderPacketTimeStamp = 0L;
-    if(m_pHeaderPacket) {
-      delete m_pHeaderPacket;
-      m_pHeaderPacket = NULL;
-    }
-  }
 
   //Send current status to the host in every 250ms (at least)
   if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 250) {
@@ -188,6 +126,14 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
         //just log it and go forward
         wxLogMessage(wxT("the packet is out of order, diff:%d"), diff);
       }
+      m_iRxPacketCnt++;
+      //Detect garbage packts (less than 10 counts), won't forward
+      if(bClosingPacket && m_iRxPacketCnt < 10) {
+        for(int i = 0; i < m_arrHeaderPacket.GetCount(); i++ ) {
+          wxLogMessage(wxT("Frame size is too small (%d), won't forward"), m_iRxPacketCnt);
+          m_arrHeaderPacket[i]->UpdatePacketType( packetType::HEADER_NOSEND );
+        }
+      }
       SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
     }
 
@@ -254,8 +200,8 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_wbuffer[9],  "                ", 16);
     CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
-
-    SendToInstance(m_wbuffer, DVAP_HEADER_LEN, packetType::HEADER);
+    m_iRxPacketCnt = 0;
+    m_arrHeaderPacket = SendToInstance(m_wbuffer, DVAP_HEADER_LEN, packetType::HEADER);
     return 1;
 
   } else if(::memcmp(m_buffer,DVAP_REQ_NAME,DVAP_REQ_NAME_LEN)==0) {

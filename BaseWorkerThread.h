@@ -41,6 +41,7 @@ enum InstType {
   DVAP = 2
 };
 
+WX_DEFINE_ARRAY_PTR(CTxData*, wxArrayCTxData);
 WX_DEFINE_ARRAY_PTR(wxThread*, wxArrayThread);
 WX_DECLARE_STRING_HASH_MAP( wxString, repeaterConfigMapType);
 
@@ -81,12 +82,17 @@ class CBaseWorkerThread : public wxThread {
     int m_slavefd;
     unsigned int m_portNumber;
     wxArrayThread m_threads;
-
     wxString m_rAppName; //for dstarrepeater
+    CTxData* m_pTxHeaderPacket;
+    bool m_bHeaderSent;
 
   protected: 
+    bool m_bStarted;
+    void ProcessTxToHost();
     char m_siteId;
-    void SendToInstance(unsigned char* data, size_t len, packetType);
+    wxMessageQueue<CTxData *> m_SendingQueue;
+    wxArrayCTxData m_arrHeaderPacket;
+    wxArrayCTxData SendToInstance(unsigned char* data, size_t len, packetType);
     // thread execution starts here
     virtual void *Entry();
     virtual int ProcessData() = 0;
@@ -104,18 +110,17 @@ class CBaseWorkerThread : public wxThread {
     unsigned char m_packetSerialNo;
     ulong m_curRxSessionId;
     ulong m_curTxSessionId;
+    ulong m_iTxPacketCnt;
+    ulong m_iRxPacketCnt;
 
     //bool m_txEnabled, m_checksum, m_tx, m_txSpace;
     //int space;
 
-    wxMemoryBuffer* m_pHeaderPacket;
     wxLongLong m_lastHeaderPacketTimeStamp;
     wxLongLong m_lastTxPacketTimeStamp;
     wxLongLong m_lastReceivedFromHostTimeStamp;
     bool m_bTxToHost = false; // DVAP->Host Stream
-    uint m_packetCnt;
 
-    wxMessageQueue<CTxData *> m_SendingQueue;
 
     //inticats ready to receive packet
     bool m_initialized = false;

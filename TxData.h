@@ -27,8 +27,9 @@
 enum packetType {
   NONE,
   HEADER,
+  HEADER_NOSEND,
   CLOSING,
-} ;
+};
 
 //
 //Data structure used to exchange GMSK data between threads
@@ -38,9 +39,13 @@ class CTxData {
     wxMemoryBuffer m_buffer;
     wxString m_myCallSign;
     ulong m_sessionId;
+    ulong m_packetNo;
     wxLongLong m_lastPacketTimeStamp;
     packetType m_packetType;
+    uint m_refCnt;
   public:
+    void UpdatePacketType(packetType t) { m_packetType = t; }
+    bool IsNoSend() { return m_packetType == packetType::HEADER_NOSEND; }
     bool IsHeaderPacket() { return m_packetType == packetType::HEADER; }
     bool IsClosingPacket() { return m_packetType == packetType::CLOSING; }
     ulong GetSessionId() { return m_sessionId; }
