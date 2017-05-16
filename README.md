@@ -4,6 +4,7 @@ This program is supposed to use to connect two DstarRepeater instances.
 
 Configure your environment with special attention, not to create any packet loop.
 It may causing a messing up of whole D-Star network, not only your local network.
+YOU MUST UNDERSTAND WHAT YOU ARE DOING.
 
 ## Disclaimer
 
