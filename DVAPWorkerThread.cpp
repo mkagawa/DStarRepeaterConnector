@@ -130,7 +130,7 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
       //Detect garbage packts (less than 10 counts), won't forward
       if(bClosingPacket && m_iRxPacketCnt < 10) {
         for(int i = 0; i < m_arrHeaderPacket.GetCount(); i++ ) {
-          wxLogMessage(wxT("Frame size is too small (%d), won't forward"), m_iRxPacketCnt);
+          wxLogMessage(wxT("Frame size is too small (%d), won't forward"), (uint)m_iRxPacketCnt);
           m_arrHeaderPacket[i]->UpdatePacketType( packetType::HEADER_NOSEND );
         }
       }
