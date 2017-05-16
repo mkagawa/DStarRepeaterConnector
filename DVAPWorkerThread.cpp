@@ -234,7 +234,7 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
       m_curRxSessionId = 0U;
       return 1;
     }
-    if(cs.EndsWith("L") || cs.EndsWith("U")) {
+    if(cs.EndsWith("L") || cs == wxT("U       ")) {
       wxLogMessage("This message is repeater command. ignoring.");
       m_curRxSessionId = 0U;
       return 1;
