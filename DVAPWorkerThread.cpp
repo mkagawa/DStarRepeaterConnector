@@ -93,9 +93,9 @@ int CDVAPWorkerThread::ProcessData() {
   }
 
   while(data_len > len) {
-    //all packets must be received within 500ms from the host
+    //each packet must be received within 1s (HOST_TIMEOUT) from the previous one from the host
     //otherwise discard this series
-    if(wxGetUTCTimeMillis() - m_lastReceivedFromHostTimeStamp > 500) {
+    if(wxGetUTCTimeMillis() - m_lastReceivedFromHostTimeStamp > HOST_TIMEOUT) {
       wxLogMessage("Host data timeout");
       return -1;
     }

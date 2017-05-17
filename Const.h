@@ -23,6 +23,9 @@ const unsigned char SW_VENDOR[] = "NW6UP";
 const unsigned char APPLICATION_NAME[] = "DStarRepeater Connector";
 #define MAX_MODULES 2
 
+#define SEND_DELAY_MS  750
+#define HOST_TIMEOUT 1000
+
 //----------DVMega---------
 
 const unsigned char DVRPTR_FRAME_START = 0xD0U;

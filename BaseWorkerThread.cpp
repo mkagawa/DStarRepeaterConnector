@@ -279,7 +279,7 @@ void CBaseWorkerThread::ProcessTxToHost() {
   CTxData *pBuf;
   bool bClosingPacket = false;
 
-  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > 500 && 
+  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > SEND_DELAY_MS && 
      m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
 
     if(pBuf->IsHeaderPacket() && m_curTxSessionId == 0) {
@@ -342,7 +342,7 @@ void CBaseWorkerThread::ProcessTxToHost() {
   //watch dog for TX.
   //if current time is more than 1 sec from previous TX packet 
   //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > 500)) {
+  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > SEND_DELAY_MS)) {
     wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets)"), (int)m_iTxPacketCnt);
     m_bTxToHost = false;
     m_curCallSign.Clear();
