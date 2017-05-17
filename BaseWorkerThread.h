@@ -110,6 +110,8 @@ class CBaseWorkerThread : public wxThread {
     unsigned char m_packetSerialNo;
     ulong m_curRxSessionId;
     ulong m_curTxSessionId;
+    ulong m_curWrongSessionIdNotified;
+
     ulong m_iTxPacketCnt;
     ulong m_iRxPacketCnt;
 

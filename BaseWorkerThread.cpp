@@ -297,7 +297,10 @@ void CBaseWorkerThread::ProcessTxToHost() {
     bClosingPacket = pBuf->IsClosingPacket();
 
     if(m_curTxSessionId != pBuf->GetSessionId()) {
-      wxLogMessage(wxT("Wrong session id: %4X"),(uint)(pBuf->GetSessionId() % 0xFFFF));
+      if(m_curWrongSessionIdNotified!= pBuf->GetSessionId()) {
+        wxLogMessage(wxT("Wrong session id: %4X, won't be forwarded"),(uint)(pBuf->GetSessionId() % 0xFFFF));
+        m_curWrongSessionIdNotified = pBuf->GetSessionId();
+      }
       delete pBuf;
     } else {
       auto data = pBuf->GetData();
