@@ -98,6 +98,7 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
        str==wxT("language") || 
        str==wxT("beaconVoice") || 
        str==wxT("logging") ||
+       str==wxT("ackTime") ||
        str==wxT("ack") ||
        str==wxT("restriction")) {
       ret = config->Write(str,wxT("0"));
@@ -118,8 +119,6 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
       ret = config->Write(str,wxT("1"));
     } else if(str==wxT("activeHangTime")) {
       ret = config->Write(str,wxT("45"));
-    } else if(str==wxT("ackTime")) {
-      ret = config->Write(str,wxT("500"));
     } else if(str==wxT("timeout")) {
       ret = config->Write(str,wxT("180"));
     } else if(str==wxT("modemType")) {
@@ -275,6 +274,10 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
   }
   wxLogInfo(wxT("%5s: %s"), header, dump);
 }
+
+//
+// Send buffer to the host
+//
 void CBaseWorkerThread::ProcessTxToHost() {
   CTxData *pBuf;
   bool bClosingPacket = false;
@@ -288,9 +291,10 @@ void CBaseWorkerThread::ProcessTxToHost() {
       m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
       m_bTxToHost = true;
       m_bInvalid = false;
-      //Save header packet, will delete later
+
+      //Save header packet, will be deleted when the session ends
       m_pTxHeaderPacket = pBuf;
-      m_bHeaderSent = false;
+
 
       wxLogInfo("Header received, SessId: %X", (uint)(pBuf->GetSessionId() % 0xFFFF));
     } 
@@ -303,36 +307,44 @@ void CBaseWorkerThread::ProcessTxToHost() {
       }
       delete pBuf;
     } else {
+      size_t len = 0;
       auto data = pBuf->GetData();
       auto data_len = pBuf->GetDataLen();
       m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
       if(!pBuf->IsHeaderPacket()) {
         //Write to the host
-        if(m_bEnableForwardPackets) {
-          if(m_pTxHeaderPacket && !m_bHeaderSent) {
-            m_bHeaderSent = true;
-            m_iTxPacketCnt = 0U;
-            if(m_pTxHeaderPacket->IsNoSend()) {
-              wxLogMessage("Connector -> Host Stream (invalid)");
-              m_bInvalid = true;
-            } else {
-              wxLogMessage("Connector -> Host Stream Starts");
+        if(m_pTxHeaderPacket && m_pTxHeaderPacket->IsSent()) {
+          if(m_pTxHeaderPacket->IsNoSend()) {
+            wxLogMessage("Connector -> Host Stream (invalid)");
+            m_bInvalid = true;
+          } else {
+            wxLogMessage("Connector -> Host Stream Starts");
+            if(m_bEnableForwardPackets) {
               //write header first
-              ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
+              len = ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
+              if(len == -1) {
+                wxLogMessage(wxT("Error in sending header to the host, err: %d"), errno);
+              }
             }
           }
-          if(m_bTxToHost) {
-            m_iTxPacketCnt++;
-            if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
-              wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
+          m_pTxHeaderPacket->MarkAsSent();
+          m_iTxPacketCnt = 0U;
+        }
+
+        if(m_bTxToHost) {
+          if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
+            wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
                                              wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),
                                               pBuf->GetCallSign());
-              dumper(head, data, data_len);
-            }
-            if(!m_bInvalid) {
-              ::write(m_fd, data, data_len);
+            dumper(head, data, data_len);
+          }
+          if(m_bEnableForwardPackets && !m_bInvalid) {
+            len = ::write(m_fd, data, data_len);
+            if(len == -1) {
+              wxLogMessage(wxT("Error in sending data to the host, err: %d"), errno);
             }
           }
+          m_iTxPacketCnt++;
         }
         delete pBuf;
       }

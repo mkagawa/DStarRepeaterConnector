@@ -42,7 +42,10 @@ class CTxData {
     ulong m_packetNo;
     wxLongLong m_lastPacketTimeStamp;
     packetType m_packetType;
-    uint m_refCnt;
+
+    //whether this packet is already sent
+    bool m_bSent;
+
   public:
     void UpdatePacketType(packetType t) { m_packetType = t; }
     bool IsNoSend() { return m_packetType == packetType::HEADER_NOSEND; }
@@ -52,6 +55,8 @@ class CTxData {
     wxString GetCallSign() { return m_myCallSign; }
     unsigned char* GetData() { return (unsigned char*)m_buffer.GetData(); }
     size_t GetDataLen() { return m_buffer.GetDataLen(); }
+    void MarkAsSent() { m_bSent = true; }
+    bool IsSent() { return m_bSent; }
     CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, packetType);
     ~CTxData();
 };

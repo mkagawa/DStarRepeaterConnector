@@ -7,3 +7,7 @@ v0.9.4    2017-05-16     add flag to prevent from sending both side
                          add gwaddr parameter
 v0.9.5    2017-05-16     prevent from potential loop by ack signal (by not to forward short frame)
 v0.9.6    2017-05-17     prevent from flood of "won't be forwarded" instead just show once
+v0.9.7    2017-05-18     fix unlink command ("_______U")
+                         check error in writing to host and show error
+                         in dsrarrepeate config ackTime=0
+                         CTxData class includes m_bSent to indicate the packet has sent

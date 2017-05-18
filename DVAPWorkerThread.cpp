@@ -183,7 +183,7 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
       m_curRxSessionId = 0U;
       return 1;
     }
-    if(cs.EndsWith("L") || cs == wxT("U       ")) {
+    if(cs.EndsWith("L") || cs == wxT("       U")) {
       wxLogMessage("This message is repeater command. ignoring.");
       m_curRxSessionId = 0U;
       return 1;
@@ -199,7 +199,10 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     //empty G1/G2 value, and force CQCQCQ to To field
     ::memcpy(&m_wbuffer[25], "CQCQCQ  ", 8);
     ::memcpy(&m_wbuffer[9],  "                ", 16);
-    CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    //Dummy CRC
+    m_wbuffer[DVAP_HEADER_LEN-2] = 0x00;
+    m_wbuffer[DVAP_HEADER_LEN-1] = 0x0b;
     m_iRxPacketCnt = 0;
     m_arrHeaderPacket = SendToInstance(m_wbuffer, DVAP_HEADER_LEN, packetType::HEADER);
     return 1;

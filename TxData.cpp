@@ -20,6 +20,7 @@
 CTxData::CTxData(unsigned char* data, size_t data_len, wxString cs, ulong sessionId, packetType ptype)
       : m_myCallSign(cs),
         m_sessionId(sessionId),
+        m_bSent(false),
         m_packetType(ptype) {
   m_buffer.Clear();
   m_buffer.AppendData(data, data_len);

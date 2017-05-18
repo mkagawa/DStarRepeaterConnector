@@ -84,7 +84,6 @@ class CBaseWorkerThread : public wxThread {
     wxArrayThread m_threads;
     wxString m_rAppName; //for dstarrepeater
     CTxData* m_pTxHeaderPacket;
-    bool m_bHeaderSent;
 
   protected: 
     bool m_bStarted;
