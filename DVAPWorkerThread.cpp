@@ -134,7 +134,7 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
           m_arrHeaderPacket[i]->UpdatePacketType( packetType::HEADER_NOSEND );
         }
       }
-      SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::NONE);
+      SendToInstance(m_buffer, data_len, bClosingPacket ? packetType::CLOSING : packetType::DATA);
     }
 
     if(bClosingPacket) {

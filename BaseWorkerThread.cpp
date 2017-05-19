@@ -313,7 +313,7 @@ void CBaseWorkerThread::ProcessTxToHost() {
       m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
       if(!pBuf->IsHeaderPacket()) {
         //Write to the host
-        if(m_pTxHeaderPacket && m_pTxHeaderPacket->IsSent()) {
+        if(m_pTxHeaderPacket && !m_pTxHeaderPacket->IsSent()) {
           if(m_pTxHeaderPacket->IsNoSend()) {
             wxLogMessage("Connector -> Host Stream (invalid)");
             m_bInvalid = true;

@@ -29,6 +29,7 @@ enum packetType {
   HEADER,
   HEADER_NOSEND,
   CLOSING,
+  DATA
 };
 
 //
