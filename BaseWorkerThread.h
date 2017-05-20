@@ -57,7 +57,6 @@ class MyException : public std::exception {
     wxString m_msg;
 };
 
-
 class CBaseWorkerThread : public wxThread {
   public:
     CBaseWorkerThread(char,unsigned int,wxString);
@@ -86,14 +85,15 @@ class CBaseWorkerThread : public wxThread {
     CTxData* m_pTxHeaderPacket;
 
   protected: 
+    virtual void PostData(CTxData * data);
     bool m_bStarted;
     void ProcessTxToHost();
     char m_siteId;
-    wxMessageQueue<CTxData *> m_SendingQueue;
+    wxMessageQueue<CTxData *> *m_pSendingQueue;
     wxArrayCTxData m_arrHeaderPacket;
     wxArrayCTxData SendToInstance(unsigned char* data, size_t len, packetType);
     // thread execution starts here
-    virtual void *Entry();
+    virtual ExitCode Entry();
     virtual int ProcessData() = 0;
     virtual void OnExit();
 

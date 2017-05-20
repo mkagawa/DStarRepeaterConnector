@@ -26,6 +26,7 @@
 
 CDVAPWorkerThread::~CDVAPWorkerThread()
 {
+  delete m_pMutexSerialWrite;
 }
 
 CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxString appName)
@@ -33,13 +34,13 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
   m_lastAckTimeStamp(wxGetUTCTimeMillis()),
   m_lastStatusSentTimeStamp(wxGetUTCTimeMillis())
 {
+  m_pMutexSerialWrite = new wxMutex();
   srand(time(NULL));
+  //Create TxWorker thread
+  m_pTxWorker = new CTxWorkerThread(m_fd, m_siteId, m_pSendingQueue, m_pMutexSerialWrite);
 }
 
 int CDVAPWorkerThread::ProcessData() {
-
-  ProcessTxToHost();
-
 
   //Send current status to the host in every 250ms (at least)
   if(m_bStarted && wxGetUTCTimeMillis() - m_lastStatusSentTimeStamp > 250) {
@@ -51,27 +52,39 @@ int CDVAPWorkerThread::ProcessData() {
     m_wbuffer[4] = 0xb5;
     m_wbuffer[5] = 0x00;
     m_wbuffer[6] = 0x7f;
+    m_pMutexSerialWrite->Lock();
     ::write(m_fd, m_wbuffer, DVAP_STATUS_LEN);
+    m_pMutexSerialWrite->Unlock();
     m_lastStatusSentTimeStamp = wxGetUTCTimeMillis();
+  }
+
+  //Set read timeout 250ms
+  struct timeval timeout;
+  fd_set set;
+  FD_ZERO(&set);
+  FD_SET(m_fd, &set);
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 250000;
+  int rv = ::select(m_fd + 1, &set, NULL, NULL, &timeout);
+  if(rv == -1) {
+    wxLogMessage(wxT("select received error: %d"), (int)errno);
+    return -1; //error
+  } else if(rv == 0) {
+    if(m_bStarted && wxGetUTCTimeMillis() - m_lastAckTimeStamp > 3000) {
+      m_bTxToHost = false;
+      m_bStarted = false;
+      m_packetSerialNo = 0U;
+      m_curRxSessionId = 0U;
+      wxLogMessage("No ack from the host. may be repeater process stopped.");
+      return -1;
+    }
+    return 0; //timeout
   }
 
   //Read from the host
   size_t len = ::read(m_fd, m_buffer, DVAP_HEADER_LENGTH);
   if(len == -1) {
-    if(errno == EAGAIN) {
-      if(m_bStarted && wxGetUTCTimeMillis() - m_lastAckTimeStamp > 3000) {
-        m_bTxToHost = false;
-        m_bStarted = false;
-        m_packetSerialNo = 0U;
-        m_curRxSessionId = 0U;
-        wxLogMessage("No ack from the host. may be repeater process stopped.");
-        return -1;
-      }
-
-      //serial buffer empty
-      return 0;
-    }
-    wxLogError(wxT("serial read error, err: %d"), errno);
+    wxLogError(wxT("serial read error, err: %d"), (int)errno);
     return 0; //error
   }
 
@@ -112,6 +125,10 @@ int CDVAPWorkerThread::ProcessData() {
 
 int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   if(::memcmp(m_buffer,DVAP_GMSK_DATA,2) == 0) {
+    if(!m_bStarted) {
+      wxLogInfo("GMSK received before system starts. Ignoring");
+      return 0;
+    }
     int diff = (uint)m_buffer[5] - (uint)m_packetSerialNo;
     //Detect closing packet pattern
     bool bClosingPacket = false;
@@ -150,6 +167,10 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   } else if(::memcmp(m_buffer,DVAP_HEADER,2)==0) {
     ::memcpy(m_wbuffer, m_buffer, DVAP_HEADER_LEN);
     //CalcCRC(&m_wbuffer[6], DVAP_HEADER_LEN-6);
+    if(!m_bStarted) {
+      wxLogInfo("HEADER received before system starts. Ignoring");
+      return 0;
+    }
 
     //For logging purpose
     wxString cs,r1,r2,my,sx;
@@ -174,7 +195,9 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
 
     //write back to the host
     m_wbuffer[1] = 0x60U;
+    m_pMutexSerialWrite->Lock();
     ::write(m_fd, m_wbuffer, DVAP_RESP_HEADER_LEN);
+    m_pMutexSerialWrite->Unlock();
 
     //check if sender callsign is not myNode call sign
     if(m_curCallSign.StartsWith(" ") || 
@@ -211,7 +234,9 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
     //treat as reset signal
     wxLogInfo(wxT("DVAP_REQ_NAME"));
     ::memcpy(m_wbuffer,DVAP_RESP_NAME,DVAP_RESP_NAME_LEN);
+    m_pMutexSerialWrite->Lock();
     ::write(m_fd, m_wbuffer, DVAP_RESP_NAME_LEN);
+    m_pMutexSerialWrite->Unlock();
     m_bTxToHost = false;
     m_bStarted = false;
     return 1;
@@ -262,7 +287,9 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   } else if(::memcmp(m_buffer,DVAP_REQ_START,DVAP_REQ_START_LEN)==0) {
     wxLogInfo(wxT("DVAP_REQ_START"));
     ::memcpy(m_wbuffer,DVAP_RESP_START,DVAP_RESP_START_LEN);
+    m_pMutexSerialWrite->Lock();
     ::write(m_fd, m_wbuffer, DVAP_RESP_START_LEN);
+    m_pMutexSerialWrite->Unlock();
     m_lastAckTimeStamp = wxGetUTCTimeMillis();
     m_bStarted = true;
     m_bTxToHost = false;
@@ -271,7 +298,9 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
   } else if(::memcmp(m_buffer,DVAP_REQ_STOP,DVAP_REQ_STOP_LEN)==0) {
     wxLogInfo(wxT("DVAP_REQ_STOP"));
     ::memcpy(m_wbuffer,DVAP_RESP_STOP,DVAP_RESP_STOP_LEN);
+    m_pMutexSerialWrite->Lock();
     ::write(m_fd, m_wbuffer, DVAP_RESP_STOP_LEN);
+    m_pMutexSerialWrite->Unlock();
     m_bStarted = false;
     m_bTxToHost = false;
     return 1;
@@ -292,3 +321,35 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
 
   }
 }
+
+CDVAPWorkerThread::ExitCode CDVAPWorkerThread::Entry() {
+  cout << "CDVAPWorkerThread::Entry " << endl;
+  auto e = m_pTxWorker->Create();
+  if(e != wxThreadError::wxTHREAD_NO_ERROR) {
+    delete m_pTxWorker;
+    m_pTxWorker = NULL;
+    wxLogMessage(wxT("Error in creating Tx thread: %d"), e);
+    return 0; 
+  }
+  m_pTxWorker->SetPriority(100);
+  m_pTxWorker->Run();
+
+  //Main Loop
+  while(!TestDestroy()){
+    int ret = ProcessData();
+    ::memset(m_buffer, 0, 10);
+  }
+
+  //request TxWorkerThread for exit
+  m_pTxWorker->Stop();
+  m_pTxWorker->Delete();
+  while(m_pTxWorker->IsRunning()) {
+    wxMilliSleep(100);
+  }
+  delete m_pTxWorker;
+  m_pTxWorker = NULL;
+}
+
+void CBaseWorkerThread::PostData(CTxData* data) {
+}
+

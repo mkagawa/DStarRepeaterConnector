@@ -14,7 +14,8 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#ifndef __TxData__
+#define __TxData__
 #include <wx/wx.h>
 #include <wx/regex.h>
 #include <wx/fileconf.h>
@@ -62,4 +63,4 @@ class CTxData {
     ~CTxData();
 };
 
-
+#endif

@@ -32,6 +32,7 @@ CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId,
   }
 }
 
+
 CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxString appName)
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
@@ -44,6 +45,8 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     m_bTxToHost(false),
     m_bInvalid(false)
 {
+  //Initialization -- this part must be in construtor
+  // wxExecute should be invoked from the main thread
   char devname[50];
   if(::openpty(&m_fd, &m_slavefd, devname, NULL, NULL)== -1) {
     throw new MyException(wxString::Format(wxT("Failed to open virtual port, errno:%d"), errno));
@@ -60,11 +63,14 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   tcsetattr(m_fd, TCSANOW, &options);
 
   //set non-blocking
-  int flags = ::fcntl(m_fd, F_GETFL, 0);
-  ::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
+  //int flags = ::fcntl(m_fd, F_GETFL, 0);
+  //::fcntl(m_fd, F_SETFL, flags | O_NONBLOCK);
 
-  wxLogMessage(wxT("%c: Device has been created: %s"), m_siteId, m_devName);
+  wxLogMessage(wxT("%s: Device has been created: %s"), m_rAppName, m_devName);
 
+  //
+  //Build dstarrepeter config file
+  //
   wxString str,var,localConfigFile = wxString::Format(wxT("%s/dstarrepeater_%s"), m_rConfDir, m_rAppName);
   wxLogInfo("localConfigFile=%s", localConfigFile);
   wxConfigBase *config = new wxFileConfig("","", localConfigFile, "", wxCONFIG_USE_LOCAL_FILE);
@@ -138,11 +144,12 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   delete config;
 
   if(m_myGatewayCallSign == "") {
-    throw new MyException(wxString::Format(wxT("Gateway CallSign is not set in config file %s"),"B"));
+    throw new MyException(wxString::Format(wxT("Gateway CallSign is not set in config file")));
   }
   if(m_myNodeCallSign == "") {
-    throw new MyException(wxString::Format(wxT("Repeater CallSign is not set in config file %s"),"A"));
+    throw new MyException(wxString::Format(wxT("Repeater CallSign is not set in config file")));
   }
+
   wxString dstarRepeaterCmdLine = wxString::Format(wxT("%s -logdir:%s -confdir:%s \"%s\""),
      m_dstarRepeaterExe, m_rLogDir, m_rConfDir, m_rAppName);
   if(wxLog::GetVerbose()) {
@@ -158,33 +165,12 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
   wxLogMessage(wxT("Repeater CallSign: %s, Gateway CallSign: %s"), m_myNodeCallSign, m_myGatewayCallSign);
 }
 
-CBaseWorkerThread::~CBaseWorkerThread() {
-  wxLogMessage(wxT("%c Destructor of CBaseWorkerThread"), m_siteId);
-}
-
-int CBaseWorkerThread::ProcessData() {
-}
-
-void CBaseWorkerThread::OnExit() {
-  wxLogMessage(wxT("CBaseWorkerThread::OnExit"));
-  if(m_fd) {
-    ::close(m_fd);
-  }
-  if(m_slavefd) {
-    ::close(m_slavefd);
-  }
-}
-
+//
+//Main loop
+//
 CBaseWorkerThread::ExitCode CBaseWorkerThread::Entry() {
   wxLogMessage(wxT("CBaseWorkerThread started (%c)"), m_siteId);
 
-  while(!TestDestroy()){
-    if(ProcessData()==0) {
-      wxMilliSleep(10);
-    }
-    wxMilliSleep(1);
-    ::memset(m_buffer, 0, 10);
-  }
 
   return static_cast<ExitCode>(0);
 }
@@ -202,7 +188,7 @@ wxArrayCTxData CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len
   wxArrayCTxData arr;
   for(int i = 0; i < m_threads.GetCount(); i++) {
     CTxData* pTxData = new CTxData(data, len, m_curCallSign, m_curRxSessionId, ptype);
-    ((CBaseWorkerThread*)m_threads[i])->m_SendingQueue.Post(pTxData);
+    ((CBaseWorkerThread*)m_threads[i])->PostData(pTxData);
     arr.Add(pTxData);
   }
   return arr;
@@ -275,100 +261,23 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
   wxLogInfo(wxT("%5s: %s"), header, dump);
 }
 
-//
-// Send buffer to the host
-//
-void CBaseWorkerThread::ProcessTxToHost() {
-  CTxData *pBuf;
-  bool bClosingPacket = false;
 
-  if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > SEND_DELAY_MS && 
-     m_SendingQueue.ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
-
-    if(pBuf->IsHeaderPacket() && m_curTxSessionId == 0) {
-      m_curTxSessionId = pBuf->GetSessionId();
-      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
-      m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
-      m_bTxToHost = true;
-      m_bInvalid = false;
-
-      //Save header packet, will be deleted when the session ends
-      m_pTxHeaderPacket = pBuf;
-
-
-      wxLogInfo("Header received, SessId: %X", (uint)(pBuf->GetSessionId() % 0xFFFF));
-    } 
-    bClosingPacket = pBuf->IsClosingPacket();
-
-    if(m_curTxSessionId != pBuf->GetSessionId()) {
-      if(m_curWrongSessionIdNotified!= pBuf->GetSessionId()) {
-        wxLogMessage(wxT("Wrong session id: %4X, won't be forwarded"),(uint)(pBuf->GetSessionId() % 0xFFFF));
-        m_curWrongSessionIdNotified = pBuf->GetSessionId();
-      }
-      delete pBuf;
-    } else {
-      size_t len = 0;
-      auto data = pBuf->GetData();
-      auto data_len = pBuf->GetDataLen();
-      m_lastTxPacketTimeStamp = wxGetUTCTimeMillis();
-      if(!pBuf->IsHeaderPacket()) {
-        //Write to the host
-        if(m_pTxHeaderPacket && !m_pTxHeaderPacket->IsSent()) {
-          if(m_pTxHeaderPacket->IsNoSend()) {
-            wxLogMessage("Connector -> Host Stream (invalid)");
-            m_bInvalid = true;
-          } else {
-            wxLogMessage("Connector -> Host Stream Starts");
-            if(m_bEnableForwardPackets) {
-              //write header first
-              len = ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
-              if(len == -1) {
-                wxLogMessage(wxT("Error in sending header to the host, err: %d"), errno);
-              }
-            }
-          }
-          m_pTxHeaderPacket->MarkAsSent();
-          m_iTxPacketCnt = 0U;
-        }
-
-        if(m_bTxToHost) {
-          if(m_bEnableDumpPackets && wxLog::GetVerbose()) {
-            wxString head = bClosingPacket ? wxString::Format(wxT("CLOSE:%s"),pBuf->GetCallSign()) :
-                                             wxString::Format("R%4X:%s",(uint)(pBuf->GetSessionId() % 0xFFFF),
-                                              pBuf->GetCallSign());
-            dumper(head, data, data_len);
-          }
-          if(m_bEnableForwardPackets && !m_bInvalid) {
-            len = ::write(m_fd, data, data_len);
-            if(len == -1) {
-              wxLogMessage(wxT("Error in sending data to the host, err: %d"), errno);
-            }
-          }
-          m_iTxPacketCnt++;
-        }
-        delete pBuf;
-      }
-    }
+CBaseWorkerThread::~CBaseWorkerThread() {
+  wxLogMessage(wxT("%c Destructor of CBaseWorkerThread"), m_siteId);
+  if(m_fd) {
+    ::close(m_fd);
   }
-
-  //watch dog for TX.
-  //if current time is more than 1 sec from previous TX packet 
-  //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastTxPacketTimeStamp > SEND_DELAY_MS)) {
-    wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets)"), (int)m_iTxPacketCnt);
-    m_bTxToHost = false;
-    m_curCallSign.Clear();
-    m_curSuffix.Clear();
-    m_curTxSessionId = 0L;
-    m_lastTxPacketTimeStamp = 0L;
-    m_lastHeaderPacketTimeStamp = 0L;
-    if(m_pTxHeaderPacket) {
-      delete m_pTxHeaderPacket;
-      m_pTxHeaderPacket = NULL;
-    }
+  if(m_slavefd) {
+    ::close(m_slavefd);
   }
 }
 
+int CBaseWorkerThread::ProcessData() {
+}
+
+void CBaseWorkerThread::OnExit() {
+  wxLogMessage(wxT("CBaseWorkerThread::OnExit"));
+}
 
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
@@ -379,4 +288,9 @@ long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
 bool CBaseWorkerThread::m_bEnableForwardPackets = false;
 bool CBaseWorkerThread::m_bEnableDumpPackets = false;
+
+
+void CDVAPWorkerThread::PostData(CTxData* data) {
+  ((CTxWorkerThread*)m_pTxWorker)->PostData(data);
+}
 

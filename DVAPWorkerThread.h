@@ -27,6 +27,7 @@
 
 #include <pty.h>
 #include "BaseWorkerThread.h"
+#include "TxWorkerThread.h"
 
 using namespace std;
 class CDVAPWorkerThread : public CBaseWorkerThread {
@@ -36,10 +37,15 @@ class CDVAPWorkerThread : public CBaseWorkerThread {
 
   protected:
     virtual int ProcessData();
+    virtual ExitCode Entry();
+    //Write locker
+    wxMutex *m_pMutexSerialWrite;
+    void PostData(CTxData * data);
 
   private:
     int _ProcessMessage(size_t data_len);
     wxLongLong m_lastStatusSentTimeStamp;
     wxLongLong m_lastAckTimeStamp;
+    CTxWorkerThread* m_pTxWorker;
 };
 

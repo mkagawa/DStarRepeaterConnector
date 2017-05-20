@@ -33,7 +33,7 @@ int CRepeaterConnectorApp::OnExit() {
     wxThread *p = m_threads[i];
     p->Delete();
     while(p->IsRunning()) {
-      wxThread::This()->Sleep(100);
+      wxMilliSleep(100);
     }
     delete p;
     m_threads.RemoveAt(i);
@@ -105,10 +105,11 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
         return false;
       }
     }
-    CBaseWorkerThread::m_rLogDir = realpath(m_logDir, buff);
+    m_logDir = CBaseWorkerThread::m_rLogDir = realpath(m_logDir, buff);
   } else {
-    CBaseWorkerThread::m_rLogDir = realpath(".", buff);
+    m_logDir = CBaseWorkerThread::m_rLogDir = realpath(".", buff);
   }
+  cout << "log files are in " << CBaseWorkerThread::m_rLogDir << endl;
 
   CBaseWorkerThread::m_bEnableDumpPackets = parser.Found(wxT("dump"));
   CBaseWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("tx"));
@@ -191,7 +192,7 @@ bool CRepeaterConnectorApp::OnInit() {
     for(i = 0; i < MAX_MODULES; i++) {
       wxString rAppName = wxString::Format(wxT("%s_%c"), CBaseWorkerThread::m_dstarRepeaterCallSign, m_module[i]);
       auto pThread = CBaseWorkerThread::CreateInstance(InstType::DVAP, m_module[i], m_portNumber[i], rAppName);
-      wxThreadError e = pThread->Create();
+      auto e = pThread->Create();
       if(e != wxThreadError::wxTHREAD_NO_ERROR) {
         delete pThread;
         pThread = NULL;
