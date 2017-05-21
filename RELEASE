@@ -11,3 +11,4 @@ v0.9.7    2017-05-18     fix unlink command ("_______U")
                          check error in writing to host and show error
                          in dsrarrepeate config ackTime=0
                          CTxData class includes m_bSent to indicate the packet has sent
+v0.9.9    2017-05-20     Implement Tx ticker, to guarantee sending packet aligns 20mS ticker
