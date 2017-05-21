@@ -37,7 +37,7 @@ CDVAPWorkerThread::CDVAPWorkerThread(char siteId, unsigned int portNumber,wxStri
   m_pMutexSerialWrite = new wxMutex();
   srand(time(NULL));
   //Create TxWorker thread
-  m_pTxWorker = new CTxWorkerThread(m_fd, m_siteId, m_pSendingQueue, m_pMutexSerialWrite);
+  m_pTxWorker = new CTxWorkerThread(m_fd, m_siteId, m_pMutexSerialWrite);
 }
 
 int CDVAPWorkerThread::ProcessData() {
@@ -211,11 +211,11 @@ int CDVAPWorkerThread::_ProcessMessage(size_t data_len) {
       m_curRxSessionId = 0U;
       return 1;
     }
-    if(m_curTxSessionId != 0) {
-      wxLogMessage("other side is being sent. ignoring.");
-      m_curRxSessionId = 0U;
-      return 1;
-    }
+    //if(m_curTxSessionId != 0) {
+    //  wxLogMessage("other side is being sent. ignoring.");
+    //  m_curRxSessionId = 0U;
+    //  return 1;
+    //}
 
     //restore the seoncd byte
     m_wbuffer[1] = 0xa0U;
@@ -350,6 +350,6 @@ CDVAPWorkerThread::ExitCode CDVAPWorkerThread::Entry() {
   m_pTxWorker = NULL;
 }
 
-void CBaseWorkerThread::PostData(CTxData* data) {
+void CDVAPWorkerThread::PostData(CTxData* data) {
+  ((CTxWorkerThread*)m_pTxWorker)->PostData(data);
 }
-

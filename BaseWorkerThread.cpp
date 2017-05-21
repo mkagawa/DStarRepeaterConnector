@@ -36,8 +36,9 @@ CBaseWorkerThread* CBaseWorkerThread::CreateInstance(InstType type, char siteId,
 CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxString appName)
   : wxThread(wxTHREAD_JOINABLE),
     m_siteId(siteId),
+    //m_pSendingQueue(new wxMessageQueue<CTxData*>()),
+    //m_curTxSessionId(0),
     m_rAppName(appName),
-    m_curTxSessionId(0),
     m_curRxSessionId(0),
     m_lastHeaderPacketTimeStamp(0),
     m_portNumber(portNumber),
@@ -45,6 +46,8 @@ CBaseWorkerThread::CBaseWorkerThread(char siteId, unsigned int portNumber, wxStr
     m_bTxToHost(false),
     m_bInvalid(false)
 {
+  //m_pSendingQueue->Clear();
+
   //Initialization -- this part must be in construtor
   // wxExecute should be invoked from the main thread
   char devname[50];
@@ -183,8 +186,6 @@ void CBaseWorkerThread::RegisterOtherInstance(CBaseWorkerThread *ptr) {
 }
 
 wxArrayCTxData CBaseWorkerThread::SendToInstance(unsigned char* data, size_t len, packetType ptype) {
-  //TODO add locking
-  //TODO CCITT check sum here
   wxArrayCTxData arr;
   for(int i = 0; i < m_threads.GetCount(); i++) {
     CTxData* pTxData = new CTxData(data, len, m_curCallSign, m_curRxSessionId, ptype);
@@ -279,6 +280,9 @@ void CBaseWorkerThread::OnExit() {
   wxLogMessage(wxT("CBaseWorkerThread::OnExit"));
 }
 
+void CBaseWorkerThread::PostData(CTxData* data) {
+}
+
 wxString CBaseWorkerThread::m_dstarRepeaterExe = "";
 wxString CBaseWorkerThread::m_dstarRepeaterCallSign = "";
 wxString CBaseWorkerThread::m_rConfDir = "";
@@ -286,11 +290,5 @@ wxString CBaseWorkerThread::m_rLogDir = "";
 wxString CBaseWorkerThread::m_dstarGatewayAddr = "127.0.0.1";
 long CBaseWorkerThread::m_dstarGatewayPort = 20010;
 bool CBaseWorkerThread::m_bStartDstarRepeater = false;
-bool CBaseWorkerThread::m_bEnableForwardPackets = false;
+//bool CBaseWorkerThread::m_bEnableForwardPackets = false;
 bool CBaseWorkerThread::m_bEnableDumpPackets = false;
-
-
-void CDVAPWorkerThread::PostData(CTxData* data) {
-  ((CTxWorkerThread*)m_pTxWorker)->PostData(data);
-}
-

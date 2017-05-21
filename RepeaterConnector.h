@@ -36,6 +36,7 @@
 #endif
 
 #include "BaseWorkerThread.h"
+#include "TxWorkerThread.h"
 
 WX_DEFINE_ARRAY_PTR(CBaseWorkerThread*, wxArrayBaseWorkerThread);
 

@@ -27,18 +27,22 @@ class CTxTicker : public wxTimer {
     CTxWorkerThread *m_pTxThread;
 
   public:
-    CTxTicker(char id, CTxWorkerThread * pw) : wxTimer(), m_siteId(id), m_pTxThread(pw) { }
+    CTxTicker(char id, CTxWorkerThread * pw)
+      : wxTimer(), m_siteId(id), m_pTxThread(pw) {
+    }
     void Notify();
 };
 
 
 class CTxWorkerThread : public wxThread {
   public:
-    CTxWorkerThread(int fd, char, wxMessageQueue<CTxData*> *, wxMutex*);
+    CTxWorkerThread(int fd, char, wxMutex*);
     virtual ~CTxWorkerThread();
     void PostData(CTxData*);
     int ProcessTxToHost();
     void Stop();
+    static bool m_bEnableForwardPackets;
+    void DisableSend();
 
   protected: 
     // thread execution starts here
@@ -47,7 +51,6 @@ class CTxWorkerThread : public wxThread {
 
   private:
     wxMutex *m_pMutexSerialWrite;
-    bool m_bStarted;
     wxMessageQueue<CTxData*>* m_pSendingQueue;
     CTxData* m_pTxHeaderPacket;
     //CBaseWorkerThread* m_pBaseWorker;
@@ -58,16 +61,15 @@ class CTxWorkerThread : public wxThread {
     wxLongLong m_lastDataPacketTimeStamp;
     wxLongLong m_lastWriteTimeStamp;
 
+    bool m_bRunning = false;
     ulong m_iTxPacketCnt;
     wxString m_curCallSign;
     wxString m_curSuffix;
-    bool m_bTxToHost;
+    bool m_bTxToHost = false;
     bool m_curWrongSessionIdNotified;
     bool m_bInvalid;
-    bool m_bEnableForwardPackets;
-    bool m_bEnableDumpPackets;
 
-    bool m_bRunning = false;
+
 
 public:
     void OnTimer(wxTimerEvent& event);

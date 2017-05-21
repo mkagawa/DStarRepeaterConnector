@@ -112,7 +112,7 @@ bool CRepeaterConnectorApp::OnCmdLineParsed(wxCmdLineParser &parser) {
   cout << "log files are in " << CBaseWorkerThread::m_rLogDir << endl;
 
   CBaseWorkerThread::m_bEnableDumpPackets = parser.Found(wxT("dump"));
-  CBaseWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("tx"));
+  CTxWorkerThread::m_bEnableForwardPackets = parser.Found(wxT("tx"));
   CBaseWorkerThread::m_bStartDstarRepeater = parser.Found(wxT("startrptr"));
   parser.Found(wxT("callsign"), &CBaseWorkerThread::m_dstarRepeaterCallSign);
   CBaseWorkerThread::m_dstarRepeaterCallSign.MakeUpper();

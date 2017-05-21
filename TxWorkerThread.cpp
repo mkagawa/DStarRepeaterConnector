@@ -18,16 +18,27 @@
 #include "TxWorkerThread.h"
 #include "Const.h"
 
+//
+// Ticker notification
+//
 void CTxTicker::Notify() {
   m_pTxThread->ProcessTxToHost();
 }
 
-CTxWorkerThread::CTxWorkerThread(int fd, char siteId, wxMessageQueue<CTxData*>* q, wxMutex* mtx)
-  : wxThread(wxTHREAD_JOINABLE), m_fd(fd), m_siteId(siteId), m_pSendingQueue(q), m_pMutexSerialWrite(mtx)
+CTxWorkerThread::CTxWorkerThread(int fd, char siteId, wxMutex* mtx)
+  : wxThread(wxTHREAD_JOINABLE), 
+    m_fd(fd),
+    m_siteId(siteId),
+    m_ptimer(new CTxTicker(m_siteId, this)),
+    m_pSendingQueue(new wxMessageQueue<CTxData*>()),
+    m_iTxPacketCnt(0U),
+    m_bTxToHost(false),
+    m_pMutexSerialWrite(mtx),
+    m_curTxSessionId(0),
+    m_curWrongSessionIdNotified(false),
+    m_bRunning(true)
 {
-  m_ptimer = new CTxTicker(m_siteId, this);
-  m_ptimer->Start(500, wxTIMER_CONTINUOUS);
-  m_bRunning = true;
+  m_ptimer->Start(20, wxTIMER_CONTINUOUS);
 }
 
 CTxWorkerThread::~CTxWorkerThread() {
@@ -36,7 +47,11 @@ CTxWorkerThread::~CTxWorkerThread() {
 }
 
 void CTxWorkerThread::PostData(CTxData* data) {
+  m_pSendingQueue->Post(data);
+}
 
+void CTxWorkerThread::DisableSend() {
+  m_bTxToHost = false;
 }
 
 //
@@ -44,11 +59,12 @@ void CTxWorkerThread::PostData(CTxData* data) {
 //
 int CTxWorkerThread::ProcessTxToHost() {
   CTxData *pBuf;
-  bool bClosingPacket = false;
+  packetType pType = packetType::NONE;
   if(wxGetUTCTimeMillis() - m_lastHeaderPacketTimeStamp > SEND_DELAY_MS && 
      m_pSendingQueue->ReceiveTimeout(0, pBuf) != wxMSGQUEUE_TIMEOUT) {
+    pType = pBuf->GetPacketType();
 
-    if(pBuf->IsHeaderPacket() && m_curTxSessionId == 0) {
+    if(pType == packetType::HEADER && m_curTxSessionId == 0) {
       m_curTxSessionId = pBuf->GetSessionId();
       m_lastDataPacketTimeStamp = wxGetUTCTimeMillis();
       m_lastHeaderPacketTimeStamp = wxGetUTCTimeMillis();
@@ -59,7 +75,6 @@ int CTxWorkerThread::ProcessTxToHost() {
       m_pTxHeaderPacket = pBuf;
       wxLogInfo("Header received, SessId: %X", (uint)(pBuf->GetSessionId() % 0xFFFF));
     } 
-    bClosingPacket = pBuf->IsClosingPacket();
 
     if(m_curTxSessionId != pBuf->GetSessionId()) {
       if(m_curWrongSessionIdNotified!= pBuf->GetSessionId()) {
@@ -72,14 +87,13 @@ int CTxWorkerThread::ProcessTxToHost() {
       auto data = pBuf->GetData();
       auto data_len = pBuf->GetDataLen();
       m_lastDataPacketTimeStamp = wxGetUTCTimeMillis();
-      if(!pBuf->IsHeaderPacket()) {
+      if(pType != packetType::HEADER) {
         //Write to the host
         if(m_pTxHeaderPacket && !m_pTxHeaderPacket->IsSent()) {
           if(m_pTxHeaderPacket->IsNoSend()) {
             wxLogMessage("Connector -> Host Stream (invalid)");
             m_bInvalid = true;
           } else {
-            wxLogMessage("Connector -> Host Stream Starts");
             if(m_bEnableForwardPackets) {
               //write header first
               m_pMutexSerialWrite->Lock();
@@ -88,6 +102,7 @@ int CTxWorkerThread::ProcessTxToHost() {
               if(len == -1) {
                 wxLogMessage(wxT("Error in sending header to the host, err: %d"), errno);
               }
+              wxLogMessage("Connector -> Host Stream Starts");
             }
           }
           m_pTxHeaderPacket->MarkAsSent();
@@ -114,7 +129,7 @@ int CTxWorkerThread::ProcessTxToHost() {
   //watch dog for TX.
   //if current time is more than 1 sec from previous TX packet 
   //or packet type is "closing" stop sending
-  if(m_bStarted && m_bTxToHost && (bClosingPacket || wxGetUTCTimeMillis() - m_lastDataPacketTimeStamp > SEND_DELAY_MS)) {
+  if(m_bTxToHost && (pType == packetType::CLOSING || wxGetUTCTimeMillis() - m_lastDataPacketTimeStamp > SEND_DELAY_MS)) {
     wxLogMessage(wxT("Connector -> Host Stream Ends (%d packets)"), (int)m_iTxPacketCnt);
     m_bTxToHost = false;
     m_curCallSign.Clear();
@@ -132,15 +147,16 @@ int CTxWorkerThread::ProcessTxToHost() {
 void CTxWorkerThread::OnExit() {
 }
 
-CTxWorkerThread::ExitCode CTxWorkerThread::Entry() {
+wxThread::ExitCode CTxWorkerThread::Entry() {
   wxLogMessage(wxT("CTxWorkerThread started (%c)"), m_siteId);
   while(m_bRunning) {
     wxMilliSleep(250);
   }
-  wxLogMessage(wxT("loop exit %c"), m_siteId);
   return static_cast<ExitCode>(0);
 }
 
 void CTxWorkerThread::Stop() {
   m_bRunning = false;
 }
+
+bool CTxWorkerThread::m_bEnableForwardPackets = false;

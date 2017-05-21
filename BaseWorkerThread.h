@@ -71,7 +71,7 @@ class CBaseWorkerThread : public wxThread {
     static wxString m_dstarGatewayAddr;
     static long m_dstarGatewayPort;
     static bool m_bStartDstarRepeater;
-    static bool m_bEnableForwardPackets;
+    //static bool m_bEnableForwardPackets;
     static bool m_bEnableDumpPackets;
     static wxString m_rConfDir;
     static wxString m_rLogDir;
@@ -89,7 +89,7 @@ class CBaseWorkerThread : public wxThread {
     bool m_bStarted;
     void ProcessTxToHost();
     char m_siteId;
-    wxMessageQueue<CTxData *> *m_pSendingQueue;
+    //wxMessageQueue<CTxData *> *m_pSendingQueue;
     wxArrayCTxData m_arrHeaderPacket;
     wxArrayCTxData SendToInstance(unsigned char* data, size_t len, packetType);
     // thread execution starts here
@@ -108,8 +108,6 @@ class CBaseWorkerThread : public wxThread {
     wxString m_curSuffix;
     unsigned char m_packetSerialNo;
     ulong m_curRxSessionId;
-    ulong m_curTxSessionId;
-    ulong m_curWrongSessionIdNotified;
 
     ulong m_iTxPacketCnt;
     ulong m_iRxPacketCnt;
