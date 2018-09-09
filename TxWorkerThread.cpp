@@ -36,7 +36,7 @@ CTxWorkerThread::CTxWorkerThread(int fd, char siteId, wxMutex* mtx)
     m_pMutexSerialWrite(mtx),
     m_curTxSessionId(0),
     m_curWrongSessionIdNotified(false),
-    m_bRunning(true)
+    m_bRunning(new wxSemaphore(0,1))
 {
   m_ptimer->Start(20, wxTIMER_CONTINUOUS);
 }
@@ -149,14 +149,12 @@ void CTxWorkerThread::OnExit() {
 
 wxThread::ExitCode CTxWorkerThread::Entry() {
   wxLogMessage(wxT("CTxWorkerThread started (%c)"), m_siteId);
-  while(m_bRunning) {
-    wxMilliSleep(250);
-  }
+  m_bRunning->Wait();
   return static_cast<ExitCode>(0);
 }
 
 void CTxWorkerThread::Stop() {
-  m_bRunning = false;
+  m_bRunning->Post();
 }
 
 bool CTxWorkerThread::m_bEnableForwardPackets = false;

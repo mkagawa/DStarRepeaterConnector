@@ -51,7 +51,7 @@ void CRepeaterConnectorApp::OnInitCmdLine(wxCmdLineParser &parser) {
   parser.AddOption(wxT("gwaddr"), wxEmptyString, wxT("gw ip addr (default:127.0.0.1)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
   for(int i=1;i<=MAX_MODULES;i++) {
     parser.AddOption(wxString::Format(wxT("mod%d"),i), wxEmptyString,
-      wxString::Format(wxT("dstarrepeater %d module letter [A-E] and port num. (ex: -mod%d:A,20011)"),i,i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
+      wxString::Format(wxT("dstarrepeater %d module letter [A-E] and udp port num. (ex: -mod%d:A,20011)"),i,i), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   }
   parser.AddOption(wxT("rptcmd"), wxEmptyString, wxT("full path of dstarrepeater executable"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_OPTION_MANDATORY);
   parser.AddOption(wxT("confdir"), wxEmptyString, wxT("config file directory (default: current dir)"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL);
