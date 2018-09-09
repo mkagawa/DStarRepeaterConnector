@@ -18,6 +18,7 @@
 #define _CTxWorkerThread_
 
 #include "TxData.h"
+#include "BaseWorkerThread.h"
 #include <wx/timer.h>
 
 class CTxWorkerThread;
@@ -36,7 +37,7 @@ class CTxTicker : public wxTimer {
 
 class CTxWorkerThread : public wxThread {
   public:
-    CTxWorkerThread(int fd, char, wxMutex*);
+    CTxWorkerThread(CBaseWorkerThread *pThread, char, wxMutex*);
     virtual ~CTxWorkerThread();
     void PostData(CTxData*);
     int ProcessTxToHost();
@@ -50,18 +51,19 @@ class CTxWorkerThread : public wxThread {
     virtual void OnExit();
 
   private:
+    CBaseWorkerThread* m_pBaseThread;
     wxMutex *m_pMutexSerialWrite;
     wxMessageQueue<CTxData*>* m_pSendingQueue;
     CTxData* m_pTxHeaderPacket;
     //CBaseWorkerThread* m_pBaseWorker;
     char m_siteId;
-    int m_fd;
     ulong m_curTxSessionId;
     wxLongLong m_lastHeaderPacketTimeStamp;
     wxLongLong m_lastDataPacketTimeStamp;
     wxLongLong m_lastWriteTimeStamp;
 
-    bool m_bRunning = false;
+    wxSemaphore* m_bRunning;
+    //bool m_bRunning = false;
     ulong m_iTxPacketCnt;
     wxString m_curCallSign;
     wxString m_curSuffix;

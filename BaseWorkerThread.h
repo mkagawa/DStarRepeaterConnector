@@ -60,7 +60,9 @@ class MyException : public std::exception {
 class CBaseWorkerThread : public wxThread {
   public:
     CBaseWorkerThread(char,unsigned int,wxString);
-    virtual ~CBaseWorkerThread() = 0;
+    virtual ~CBaseWorkerThread();
+
+    virtual size_t WriteData(const unsigned char* data, size_t len);
     void RegisterOtherInstance(CBaseWorkerThread* ptr);
 
     static CBaseWorkerThread* CreateInstance(InstType, char siteId, unsigned int portNumber, wxString appName);

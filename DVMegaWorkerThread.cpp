@@ -249,4 +249,3 @@ int CDVMegaWorkerThread::ProcessData() {
   }
   return 1;
 }
-

@@ -263,7 +263,8 @@ void CBaseWorkerThread::dumper(const char* header, unsigned char* buff, int len)
 }
 
 
-CBaseWorkerThread::~CBaseWorkerThread() {
+CBaseWorkerThread::~CBaseWorkerThread()
+{
   wxLogMessage(wxT("%c Destructor of CBaseWorkerThread"), m_siteId);
   if(m_fd) {
     ::close(m_fd);
@@ -271,6 +272,11 @@ CBaseWorkerThread::~CBaseWorkerThread() {
   if(m_slavefd) {
     ::close(m_slavefd);
   }
+}
+
+size_t CBaseWorkerThread::WriteData(const unsigned char* data, size_t len)
+{
+  return ::write(m_fd, data, len);
 }
 
 int CBaseWorkerThread::ProcessData() {

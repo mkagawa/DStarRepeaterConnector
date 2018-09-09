@@ -25,9 +25,10 @@ void CTxTicker::Notify() {
   m_pTxThread->ProcessTxToHost();
 }
 
-CTxWorkerThread::CTxWorkerThread(int fd, char siteId, wxMutex* mtx)
+CTxWorkerThread::CTxWorkerThread(CBaseWorkerThread* pThread, char siteId, wxMutex* mtx)
   : wxThread(wxTHREAD_JOINABLE), 
-    m_fd(fd),
+    //m_fd(fd),
+    m_pBaseThread(pThread),
     m_siteId(siteId),
     m_ptimer(new CTxTicker(m_siteId, this)),
     m_pSendingQueue(new wxMessageQueue<CTxData*>()),
@@ -44,6 +45,7 @@ CTxWorkerThread::CTxWorkerThread(int fd, char siteId, wxMutex* mtx)
 CTxWorkerThread::~CTxWorkerThread() {
   m_ptimer->Stop();
   delete m_ptimer;
+  delete m_bRunning;
 }
 
 void CTxWorkerThread::PostData(CTxData* data) {
@@ -97,7 +99,7 @@ int CTxWorkerThread::ProcessTxToHost() {
             if(m_bEnableForwardPackets) {
               //write header first
               m_pMutexSerialWrite->Lock();
-              len = ::write(m_fd, m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
+              len = m_pBaseThread->WriteData(m_pTxHeaderPacket->GetData(), m_pTxHeaderPacket->GetDataLen());
               m_pMutexSerialWrite->Unlock();
               if(len == -1) {
                 wxLogMessage(wxT("Error in sending header to the host, err: %d"), errno);
@@ -112,7 +114,7 @@ int CTxWorkerThread::ProcessTxToHost() {
         if(m_bTxToHost) {
           if(m_bEnableForwardPackets && !m_bInvalid) {
             m_pMutexSerialWrite->Lock();
-            len = ::write(m_fd, data, data_len);
+            len = m_pBaseThread->WriteData(data, data_len);
             m_pMutexSerialWrite->Unlock();
             m_lastWriteTimeStamp = wxGetUTCTimeMillis();
             if(len == -1) {
