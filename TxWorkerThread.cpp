@@ -27,7 +27,6 @@ void CTxTicker::Notify() {
 
 CTxWorkerThread::CTxWorkerThread(CBaseWorkerThread* pThread, char siteId, wxMutex* mtx)
   : wxThread(wxTHREAD_JOINABLE), 
-    //m_fd(fd),
     m_pBaseThread(pThread),
     m_siteId(siteId),
     m_ptimer(new CTxTicker(m_siteId, this)),
